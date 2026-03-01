@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SalonFlow - Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-scissors brand-icon"></i>
+                <span class="brand-name">SalonFlow</span>
+            </div>
+
+            <nav class="nav-links">
+                <a href="#" class="nav-link active" data-target="dashboard">
+                    <i class="fa-solid fa-chart-line"></i> Dashboard
+                </a>
+                <a href="#" class="nav-link" data-target="workers">
+                    <i class="fa-solid fa-users"></i> Workers
+                </a>
+                <a href="#" class="nav-link" data-target="memberships">
+                    <i class="fa-solid fa-id-card"></i> Memberships
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="admin-profile">
+                    <div class="avatar">A</div>
+                    <div class="admin-info">
+                        <span class="admin-name">Shop Owner</span>
+                        <span class="admin-role">Admin</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <h1 id="page-title">Dashboard Overview</h1>
+                <div class="current-date" id="current-date">Today</div>
+            </header>
+
+            <!-- Dashboard View -->
+            <section id="view-dashboard" class="view-section active">
+                <div class="metric-cards">
+                    <div class="metric-card gradient-primary">
+                        <div class="metric-icon"><i class="fa-solid fa-wallet"></i></div>
+                        <div class="metric-info">
+                            <h3>Total Net Revenue</h3>
+                            <p class="metric-value" id="dashboard-net">₹0</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+                        <div class="metric-info">
+                            <h3>Total Cash In</h3>
+                            <p class="metric-value text-green" id="dashboard-cash">₹0</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fa-solid fa-mobile-screen"></i></div>
+                        <div class="metric-info">
+                            <h3>Total Online In</h3>
+                            <p class="metric-value text-blue" id="dashboard-online">₹0</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                        <div class="metric-info">
+                            <h3>Total Expenses</h3>
+                            <p class="metric-value text-red" id="dashboard-expenses">₹0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-widgets">
+                    <div class="widget workers-overview">
+                        <div class="widget-header">
+                            <h2>Top Performing Workers</h2>
+                            <button class="btn btn-sm btn-outline" onclick="app.switchView('workers')">View All</button>
+                        </div>
+                        <div class="worker-list-mini" id="top-workers-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Workers View -->
+            <section id="view-workers" class="view-section">
+                <div class="workers-header-actions"
+                    style="display: flex; gap: 16px; align-items: center; justify-content: space-between;">
+                    <div class="search-box" style="flex: 1;">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="worker-search" placeholder="Search workers...">
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <input type="date" id="global-date-filter" class="date-filter">
+                        <button class="btn btn-primary" id="btn-add-worker"><i class="fa-solid fa-plus"></i> Add
+                            Worker</button>
+                    </div>
+                </div>
+
+                <div class="workers-grid" id="workers-grid">
+                    <!-- Cards Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Memberships View -->
+            <section id="view-memberships" class="view-section">
+                <div class="workers-header-actions"
+                    style="display: flex; gap: 16px; align-items: center; justify-content: space-between;">
+                    <div class="search-box" style="flex: 1;">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="membership-search" placeholder="Search memberships...">
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <button class="btn btn-primary" id="btn-add-membership"><i class="fa-solid fa-plus"></i> Add
+                            Membership Card</button>
+                    </div>
+                </div>
+
+                <div class="workers-grid" id="memberships-grid">
+                    <!-- Cards Populated by JS -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Worker Detail Modal -->
+    <div class="modal" id="worker-modal">
+        <div class="modal-content worker-detail-modal">
+            <span class="close-modal">&times;</span>
+
+            <div class="worker-modal-header">
+                <div class="worker-modal-profile">
+                    <div class="worker-avatar large" id="wm-avatar" style="overflow: hidden;">W</div>
+                    <div>
+                        <h2 id="wm-name">Worker Name</h2>
+                        <p class="text-muted" id="wm-phone" style="margin-bottom: 8px;">Daily Summary</p>
+                        <button class="btn btn-outline btn-sm" id="btn-edit-profile"><i class="fa-solid fa-pen"></i>
+                            Edit Profile</button>
+                    </div>
+                </div>
+                <div class="worker-actions">
+                    <button class="btn btn-success" id="btn-add-income"><i class="fa-solid fa-hand-holding-dollar"></i>
+                        Add Income</button>
+                    <button class="btn btn-danger" id="btn-add-expense"><i class="fa-solid fa-money-bill-wave"></i> Add
+                        Expense</button>
+                </div>
+            </div>
+
+            <div class="worker-stats-row">
+                <div class="stat-box">
+                    <span class="label">Net Collected</span>
+                    <span class="value" id="wm-net">₹0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Cash Expected</span>
+                    <span class="value text-green" id="wm-expected-cash">₹0</span>
+                    <small class="sub-label">(Cash In - Prev Exp)</small>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Online</span>
+                    <span class="value text-blue" id="wm-online">₹0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Expenses</span>
+                    <span class="value text-red" id="wm-expenses">₹0</span>
+                </div>
+            </div>
+
+            <div class="transactions-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3>Transactions</h3>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <select id="wm-type-filter" class="date-filter">
+                            <option value="all">All Types</option>
+                            <option value="income">Income</option>
+                            <option value="expense">Expenses</option>
+                        </select>
+                        <input type="date" id="wm-date-filter" class="date-filter">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Payment Mode</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wm-transactions-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Transaction/Expense Modal -->
+    <div class="modal" id="transaction-modal">
+        <div class="modal-content mini-modal">
+            <span class="close-modal">&times;</span>
+            <h2 id="tm-title">Add Transaction</h2>
+
+            <form id="transaction-form">
+                <input type="hidden" id="tm-worker-id">
+                <input type="hidden" id="tm-type"> <!-- 'income' or 'expense' -->
+
+                <div class="form-group">
+                    <label for="tm-desc">Description</label>
+                    <input type="text" id="tm-desc" placeholder="e.g. Haircut & Beard or Shampoo purchased" required>
+                    <div class="quick-tags" id="tm-quick-tags">
+                        <span class="tag" data-val="Haircut">Haircut</span>
+                        <span class="tag" data-val="Beard Trim">Beard Trim</span>
+                        <span class="tag" data-val="Hair Color">Hair Color</span>
+                        <span class="tag" data-val="Spa">Spa</span>
+                        <span class="tag" data-val="Facial">Facial</span>
+                        <span class="tag" data-val="Massage">Massage</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="tm-amount">Amount (₹)</label>
+                    <input type="number" id="tm-amount" placeholder="0" required min="1">
+                </div>
+
+                <div class="form-group" id="tm-payment-mode-group">
+                    <label>Payment Mode</label>
+                    <div class="radio-group">
+                        <label class="radio-card">
+                            <input type="radio" name="payment_mode" value="cash" checked>
+                            <span class="radio-content">
+                                <i class="fa-solid fa-money-bill"></i> Cash
+                            </span>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="payment_mode" value="online">
+                            <span class="radio-content">
+                                <i class="fa-solid fa-mobile-screen"></i> Online
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="tm-submit-btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Membership Detailed Modal -->
+    <div class="modal" id="membership-detail-modal">
+        <div class="modal-content worker-detail-modal">
+            <span class="close-modal">&times;</span>
+
+            <div class="worker-modal-header">
+                <div class="worker-modal-profile">
+                    <div class="worker-avatar large" id="mdm-avatar"
+                        style="overflow: hidden; background: var(--gradient-primary); color: white;">
+                        <i class="fa-solid fa-id-card"></i>
+                    </div>
+                    <div>
+                        <h2 id="mdm-name">Customer Name</h2>
+                        <p class="text-muted" id="mdm-phone" style="margin-bottom: 8px;">Phone Number</p>
+                        <p class="text-muted" id="mdm-village" style="margin-bottom: 8px;">Village</p>
+                    </div>
+                </div>
+                <div class="worker-actions">
+                    <button class="btn btn-primary" id="btn-add-record"><i class="fa-solid fa-plus"></i>
+                        Add Record</button>
+                </div>
+            </div>
+
+            <div class="worker-stats-row">
+                <div class="stat-box">
+                    <span class="label">Total Records</span>
+                    <span class="value text-primary" id="mdm-total-records">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Total Discount Given</span>
+                    <span class="value text-green" id="mdm-total-discount">₹0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Issue Date</span>
+                    <span class="value text-muted" id="mdm-issue-date" style="font-size: 1.2rem;">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Expire Date</span>
+                    <span class="value text-muted" id="mdm-expire-date" style="font-size: 1.2rem;">-</span>
+                </div>
+            </div>
+
+            <div class="transactions-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3>Service History</h3>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Description</th>
+                                <th>Original Amount</th>
+                                <th>Discount</th>
+                                <th>Final Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mdm-records-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Membership Record Modal -->
+    <div class="modal" id="add-record-modal">
+        <div class="modal-content mini-modal">
+            <span class="close-modal">&times;</span>
+            <h2>Add Service Record</h2>
+
+            <form id="record-form">
+                <input type="hidden" id="rm-membership-id">
+
+                <div class="form-group">
+                    <label for="rm-desc">Service Description</label>
+                    <input type="text" id="rm-desc" placeholder="e.g. Haircut & Spa" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="rm-amount">Total Amount (₹)</label>
+                    <input type="number" id="rm-amount" placeholder="0" required min="1">
+                    <small class="text-muted">Enter the full amount. A 20% discount will be calculated
+                        automatically.</small>
+                </div>
+
+                <div class="form-group"
+                    style="background: rgba(46, 204, 113, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(46, 204, 113, 0.3);">
+                    <label style="color: var(--text-green);">Final Amount after 20% Discount (₹)</label>
+                    <input type="number" id="rm-discounted-amount" readonly
+                        style="background: rgba(0,0,0,0.2); color: var(--text-green); font-weight: bold; border: none;">
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Membership Modal -->
+    <div class="modal" id="membership-modal">
+        <div class="modal-content mini-modal">
+            <span class="close-modal">&times;</span>
+            <h2>Add Membership Card</h2>
+
+            <form id="membership-form">
+                <div class="form-group">
+                    <label for="ms-name">Customer Name</label>
+                    <input type="text" id="ms-name" placeholder="e.g. John Doe" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="ms-phone">Phone Number</label>
+                    <input type="text" id="ms-phone" placeholder="e.g. 9876543210" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="ms-village">Village Name</label>
+                    <input type="text" id="ms-village" placeholder="e.g. Springfield" required>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="ms-issue-date">Issue Date</label>
+                        <input type="date" id="ms-issue-date" required>
+                    </div>
+
+                    <div class="form-group" style="flex: 1;">
+                        <label for="ms-expire-date">Expire Date</label>
+                        <input type="date" id="ms-expire-date" required>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Membership</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div class="modal" id="edit-profile-modal">
+        <div class="modal-content mini-modal">
+            <span class="close-modal">&times;</span>
+            <h2>Edit Worker Profile</h2>
+
+            <form id="edit-profile-form">
+                <input type="hidden" id="ep-worker-id">
+
+                <div class="form-group">
+                    <label for="ep-name">Full Name</label>
+                    <input type="text" id="ep-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="ep-phone">Mobile Number</label>
+                    <input type="text" id="ep-phone" placeholder="e.g. 9876543210">
+                </div>
+
+                <div class="form-group">
+                    <label for="ep-photo-upload">Profile Photo</label>
+                    <input type="file" id="ep-photo-upload" accept="image/*">
+                    <input type="hidden" id="ep-photo-data">
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Alert Toast -->
+    <div id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
