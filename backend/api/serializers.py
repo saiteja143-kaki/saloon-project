@@ -6,11 +6,13 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = ['id', 'workerId', 'type', 'desc', 'amount', 'mode', 'timestamp']
         
-    workerId = serializers.IntegerField(source='worker.id')
+    workerId = serializers.IntegerField(source='worker.id', required=False, allow_null=True)
     
     def create(self, validated_data):
-        worker_id = validated_data.pop('worker')['id']
-        worker = Worker.objects.get(id=worker_id)
+        worker_data = validated_data.pop('worker', None)
+        worker = None
+        if worker_data and worker_data.get('id'):
+            worker = Worker.objects.get(id=worker_data['id'])
         transaction = Transaction.objects.create(worker=worker, **validated_data)
         return transaction
 
@@ -40,4 +42,63 @@ class MembershipSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Membership
-        fields = ['id', 'name', 'issue_date', 'expire_date', 'village_name', 'phone_number', 'records']
+        fields = ['id', 'member_id', 'name', 'issue_date', 'expire_date', 'village_name', 'phone_number', 'records']
+
+
+from .models import Product, ProductSale, ProductRestock
+
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'price', 'stock_quantity', 'created_at']
+
+
+class ProductSaleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductSale
+        fields = ['id', 'productId', 'quantity_sold', 'sale_price', 'payment_method', 'timestamp']
+        
+    productId = serializers.IntegerField(source='product.id')
+    
+    def create(self, validated_data):
+        product_id = validated_data.pop('product')['id']
+        product = Product.objects.get(id=product_id)
+        sale = ProductSale.objects.create(product=product, **validated_data)
+        return sale
+
+class ProductRestockSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductRestock
+        fields = ['id', 'productId', 'quantity_added', 'timestamp']
+        
+    productId = serializers.IntegerField(source='product.id')
+    
+    def create(self, validated_data):
+        product_id = validated_data.pop('product')['id']
+        product = Product.objects.get(id=product_id)
+        restock = ProductRestock.objects.create(product=product, **validated_data)
+        return restock
+
+
+from .models import Attendance
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    workerId = serializers.IntegerField(source='worker.id')
+
+    class Meta:
+        model = Attendance
+        fields = ['id', 'workerId', 'date', 'check_in', 'check_out']
+
+    def create(self, validated_data):
+        worker_id = validated_data.pop('worker')['id']
+        worker = Worker.objects.get(id=worker_id)
+        attendance, _ = Attendance.objects.get_or_create(
+            worker=worker,
+            date=validated_data.get('date') or __import__('django.utils.timezone', fromlist=['localdate']).localdate(),
+            defaults=validated_data
+        )
+        # If already exists, update check_in if not set
+        if attendance.check_in is None and validated_data.get('check_in'):
+            attendance.check_in = validated_data['check_in']
+            attendance.save()
+        return attendance

@@ -14,8 +14,7 @@ class Worker(models.Model):
 class Transaction(models.Model):
     TX_TYPES = [('income', 'Income'), ('expense', 'Expense')]
     MODES = [('cash', 'Cash'), ('online', 'Online')]
-
-    worker = models.ForeignKey(Worker, on_delete=models.CASCADE, related_name='transactions')
+    worker = models.ForeignKey(Worker, on_delete=models.CASCADE, related_name='transactions', null=True, blank=True)
     type = models.CharField(max_length=10, choices=TX_TYPES)
     desc = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -23,10 +22,21 @@ class Transaction(models.Model):
     timestamp = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return f"{self.type.capitalize()} - {self.amount} ({self.worker.name})"
+        worker_name = self.worker.name if self.worker else "General Shop"
+        return f"{self.type.capitalize()} - {self.amount} ({worker_name})"
 
+
+import random
+
+def generate_unique_member_id():
+    while True:
+        # Generate a random 3-digit string strictly between 000 and 999
+        new_id = f"{random.randint(0, 999):03d}"
+        if not Membership.objects.filter(member_id=new_id).exists():
+            return new_id
 
 class Membership(models.Model):
+    member_id = models.CharField(max_length=3, unique=True, default=generate_unique_member_id, editable=False)
     name = models.CharField(max_length=255)
     issue_date = models.DateField()
     expire_date = models.DateField()
@@ -46,3 +56,47 @@ class MembershipRecord(models.Model):
 
     def __str__(self):
         return f"{self.service_desc} - {self.discounted_amount} ({self.membership.name})"
+
+
+class Product(models.Model):
+    name = models.CharField(max_length=255)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    stock_quantity = models.IntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.name} - {self.stock_quantity} in stock"
+
+
+class ProductSale(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='sales')
+    quantity_sold = models.IntegerField()
+    sale_price = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=10, choices=[('cash', 'Cash'), ('online', 'Online')], default='cash')
+    timestamp = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Sold {self.quantity_sold}x {self.product.name}"
+
+
+class ProductRestock(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='restocks')
+    quantity_added = models.IntegerField()
+    timestamp = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Restocked {self.quantity_added}x {self.product.name}"
+
+
+class Attendance(models.Model):
+    worker    = models.ForeignKey(Worker, on_delete=models.CASCADE, related_name='attendances')
+    date      = models.DateField(default=timezone.localdate)
+    check_in  = models.TimeField(null=True, blank=True)
+    check_out = models.TimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('worker', 'date')   # one record per worker per day
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.worker.name} – {self.date} ({self.check_in} → {self.check_out})"

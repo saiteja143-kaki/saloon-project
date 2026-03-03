@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
@@ -29,6 +30,12 @@
                 <a href="#" class="nav-link" data-target="memberships">
                     <i class="fa-solid fa-id-card"></i> Memberships
                 </a>
+                <a href="#" class="nav-link" data-target="products">
+                    <i class="fa-solid fa-box-open"></i> Products
+                </a>
+                <a href="#" class="nav-link" data-target="expenses">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> Shop Expenses
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -46,39 +53,114 @@
         <main class="main-content">
             <header class="topbar">
                 <h1 id="page-title">Dashboard Overview</h1>
-                <div class="current-date" id="current-date">Today</div>
+                <div class="global-date-filter-container" style="display: flex; gap: 12px; align-items: center;">
+                    <select id="global-date-select" class="date-filter"
+                        style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-glass); background: var(--bg-card); color: var(--text-primary);">
+                        <option value="today">Today</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="all">All Time</option>
+                        <option value="custom">Custom Range...</option>
+                    </select>
+
+                    <div id="custom-date-inputs" style="display: none; gap: 8px; align-items: center;">
+                        <input type="date" id="global-date-start" class="date-filter">
+                        <span style="color: var(--text-muted);">to</span>
+                        <input type="date" id="global-date-end" class="date-filter">
+                        <button class="btn btn-sm btn-primary" id="btn-apply-custom-date">Apply</button>
+                    </div>
+                </div>
             </header>
 
             <!-- Dashboard View -->
             <section id="view-dashboard" class="view-section active">
                 <div class="metric-cards">
-                    <div class="metric-card gradient-primary">
-                        <div class="metric-icon"><i class="fa-solid fa-wallet"></i></div>
-                        <div class="metric-info">
-                            <h3>Total Net Revenue</h3>
-                            <p class="metric-value" id="dashboard-net">₹0</p>
+                    <div class="metric-card gradient-primary"
+                        style="display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                            <div class="metric-icon"><i class="fa-solid fa-wallet"></i></div>
+                            <div class="metric-info">
+                                <h3>Total Net Revenue</h3>
+                                <p class="metric-value" id="dashboard-net">₹0</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm"
+                            style="margin-top: 15px; width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: inherit; border-radius: 6px; padding: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; position: relative; z-index: 1;"
+                            onclick="app.openMetricHistory('net_revenue')"
+                            onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+                            onmouseout="this.style.background='rgba(255,255,255,0.1)'"><i
+                                class="fa-solid fa-clock-rotate-left"></i> View Full History</button>
+                    </div>
+                    <div class="metric-card"
+                        style="display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                            <div class="metric-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+                            <div class="metric-info">
+                                <h3>Total Cash In</h3>
+                                <p class="metric-value text-green" id="dashboard-cash">₹0</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm"
+                            style="margin-top: 15px; width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-green); border-radius: 6px; padding: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"
+                            onclick="app.openMetricHistory('cash_in')"
+                            onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                            onmouseout="this.style.background='rgba(255,255,255,0.05)'"><i
+                                class="fa-solid fa-clock-rotate-left"></i> View Full History</button>
+                    </div>
+                    <div class="metric-card"
+                        style="display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                            <div class="metric-icon"><i class="fa-solid fa-mobile-screen"></i></div>
+                            <div class="metric-info">
+                                <h3>Total Online In</h3>
+                                <p class="metric-value text-blue" id="dashboard-online">₹0</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm"
+                            style="margin-top: 15px; width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-blue); border-radius: 6px; padding: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"
+                            onclick="app.openMetricHistory('online_in')"
+                            onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                            onmouseout="this.style.background='rgba(255,255,255,0.05)'"><i
+                                class="fa-solid fa-clock-rotate-left"></i> View Full History</button>
+                    </div>
+                    <div class="metric-card"
+                        style="display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                            <div class="metric-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                            <div class="metric-info">
+                                <h3>Total Expenses</h3>
+                                <p class="metric-value text-red" id="dashboard-expenses">₹0</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm"
+                            style="margin-top: 15px; width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-red); border-radius: 6px; padding: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"
+                            onclick="app.openMetricHistory('expenses')"
+                            onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                            onmouseout="this.style.background='rgba(255,255,255,0.05)'"><i
+                                class="fa-solid fa-clock-rotate-left"></i> View Full History</button>
+                    </div>
+                </div>
+
+                <!-- Analytics Chart Widget -->
+                <div class="widget" id="analytics-chart-widget" style="margin-bottom: 24px; padding: 24px;">
+                    <div class="widget-header" style="margin-bottom: 20px;">
+                        <h2 style="display:flex; align-items:center; gap:10px;">
+                            <i class="fa-solid fa-chart-area" style="color: var(--primary);"></i>
+                            Revenue Analytics
+                        </h2>
+                        <div style="display:flex; gap:8px;">
+                            <button id="chart-type-line" class="btn btn-sm btn-primary"
+                                onclick="app.setChartType('line')">
+                                <i class="fa-solid fa-chart-line"></i> Line
+                            </button>
+                            <button id="chart-type-bar" class="btn btn-sm btn-outline"
+                                onclick="app.setChartType('bar')">
+                                <i class="fa-solid fa-chart-bar"></i> Bar
+                            </button>
                         </div>
                     </div>
-                    <div class="metric-card">
-                        <div class="metric-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
-                        <div class="metric-info">
-                            <h3>Total Cash In</h3>
-                            <p class="metric-value text-green" id="dashboard-cash">₹0</p>
-                        </div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon"><i class="fa-solid fa-mobile-screen"></i></div>
-                        <div class="metric-info">
-                            <h3>Total Online In</h3>
-                            <p class="metric-value text-blue" id="dashboard-online">₹0</p>
-                        </div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
-                        <div class="metric-info">
-                            <h3>Total Expenses</h3>
-                            <p class="metric-value text-red" id="dashboard-expenses">₹0</p>
-                        </div>
+                    <div style="position: relative; height: 280px;">
+                        <canvas id="analytics-chart"></canvas>
                     </div>
                 </div>
 
@@ -104,7 +186,7 @@
                         <input type="text" id="worker-search" placeholder="Search workers...">
                     </div>
                     <div style="display: flex; gap: 12px; align-items: center;">
-                        <input type="date" id="global-date-filter" class="date-filter">
+                        <!-- Intentionally removed the redundant local date filter here since we have a global one now -->
                         <button class="btn btn-primary" id="btn-add-worker"><i class="fa-solid fa-plus"></i> Add
                             Worker</button>
                     </div>
@@ -133,6 +215,74 @@
                     <!-- Cards Populated by JS -->
                 </div>
             </section>
+
+            <!-- Products View -->
+            <section id="view-products" class="view-section">
+                <div class="workers-header-actions"
+                    style="display: flex; gap: 16px; align-items: center; justify-content: space-between;">
+                    <div class="search-box" style="flex: 1;">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="product-search" placeholder="Search products...">
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <button class="btn btn-primary" id="btn-add-product"><i class="fa-solid fa-plus"></i> Add
+                            Product</button>
+                    </div>
+                </div>
+
+                <div class="workers-grid" id="products-grid">
+                    <!-- Cards Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Shop Expenses View -->
+            <section id="view-expenses" class="view-section">
+                <!-- Header -->
+                <div class="workers-header-actions" style="margin-bottom: 24px;">
+                    <div style="flex: 1;">
+                        <h2 style="margin: 0; font-size: 1.5rem;">Shop Finances</h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Manage worker monthly
+                            payouts and general shop expenses.</p>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <!-- Worker Settlements Block -->
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h2>Monthly Worker Settlements</h2>
+                        </div>
+                        <div id="worker-settlements-list"
+                            style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- General Shop Expenses Block -->
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h2>General Shop Expenses</h2>
+                            <button class="btn btn-sm btn-outline text-red" id="btn-add-shop-expense"><i
+                                    class="fa-solid fa-plus"></i> Add Expense</button>
+                        </div>
+                        <div class="table-container" style="margin-top: 16px;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Description</th>
+                                        <th style="text-align: right;">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shop-expenses-body">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 
@@ -190,7 +340,6 @@
                             <option value="income">Income</option>
                             <option value="expense">Expenses</option>
                         </select>
-                        <input type="date" id="wm-date-filter" class="date-filter">
                     </div>
                 </div>
                 <div class="table-container">
@@ -205,6 +354,29 @@
                             </tr>
                         </thead>
                         <tbody id="wm-transactions-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Attendance Section -->
+            <div class="transactions-section" style="margin-top: 24px; border-top: 1px solid var(--border-glass); padding-top: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 8px;"></i>Attendance History</h3>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Check In</th>
+                                <th>Check Out</th>
+                                <th>Hours</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wm-attendance-body">
                             <!-- Populated by JS -->
                         </tbody>
                     </table>
@@ -376,6 +548,13 @@
             <h2>Add Membership Card</h2>
 
             <form id="membership-form">
+                <div class="form-group"
+                    style="background: rgba(139, 92, 246, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3);">
+                    <label style="color: var(--primary);">Card ID (Auto-Generated or Manual)</label>
+                    <input type="text" id="ms-member-id" maxlength="3" required
+                        style="color: var(--primary); font-weight: bold; letter-spacing: 2px;">
+                </div>
+
                 <div class="form-group">
                     <label for="ms-name">Customer Name</label>
                     <input type="text" id="ms-name" placeholder="e.g. John Doe" required>
@@ -447,7 +626,255 @@
     <!-- Alert Toast -->
     <div id="toast-container"></div>
 
+    <!-- Add Shop Expense Modal -->
+    <div class="modal" id="shop-expense-modal">
+        <div class="modal-content mini-modal">
+            <span class="close-modal">&times;</span>
+            <h2>Add Shop Expense</h2>
+
+            <form id="shop-expense-form">
+                <div class="form-group">
+                    <label for="se-desc">Expense Description (e.g., EMI, Rent, Bills)</label>
+                    <input type="text" id="se-desc" placeholder="Enter expense details" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="se-amount">Amount (₹)</label>
+                    <input type="number" id="se-amount" placeholder="0" required min="1">
+                </div>
+
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <div style="display: flex; gap: 16px; margin-top: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                            <input type="radio" name="se-payment-method" value="cash" checked style="width: auto;">
+                            <span style="color: var(--text-primary);"><i class="fa-solid fa-money-bill-wave"
+                                    style="color: var(--text-green); margin-right: 4px;"></i> Cash</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                            <input type="radio" name="se-payment-method" value="online" style="width: auto;">
+                            <span style="color: var(--text-primary);"><i class="fa-solid fa-qrcode"
+                                    style="color: var(--primary); margin-right: 4px;"></i> Online/UPI</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="se-date">Date and Time</label>
+                    <input type="datetime-local" id="se-date" required>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Product Modal -->
+    <div class="modal" id="product-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Product</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="product-form">
+                    <div class="form-group">
+                        <label for="prod-name">Product Name *</label>
+                        <input type="text" id="prod-name" required placeholder="e.g. Shampoo">
+                    </div>
+                    <div class="form-group">
+                        <label for="prod-price">Unit Price (₹) *</label>
+                        <input type="number" id="prod-price" required min="0" step="1" placeholder="e.g. 500">
+                    </div>
+                    <div class="form-group">
+                        <label for="prod-stock">Initial Stock Quantity *</label>
+                        <input type="number" id="prod-stock" required min="0" step="1" placeholder="e.g. 20">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Save
+                        Product</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sell Product Modal -->
+    <div class="modal" id="sell-product-modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="spm-title">Sell Product</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="sell-product-form">
+                    <input type="hidden" id="spm-product-id">
+
+                    <div class="form-group">
+                        <label for="spm-quantity">Quantity to Sell *</label>
+                        <input type="number" id="spm-quantity" required min="1" step="1" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method *</label>
+                        <div style="display: flex; gap: 16px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="radio" name="spm-payment-method" value="cash" checked style="width: auto;">
+                                <span style="color: var(--text-primary);"><i class="fa-solid fa-money-bill-wave"
+                                        style="color: var(--text-green); margin-right: 4px;"></i> Cash</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="radio" name="spm-payment-method" value="online" style="width: auto;">
+                                <span style="color: var(--text-primary);"><i class="fa-solid fa-qrcode"
+                                        style="color: var(--primary); margin-right: 4px;"></i> Online/UPI</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spm-total">Total Sale Price (₹) *</label>
+                        <input type="number" id="spm-total" required min="0" step="0.01">
+                    </div>
+
+                    <div
+                        style="padding: 12px; background: rgba(0,0,0,0.1); border-radius: 6px; margin-bottom: 20px; font-size: 0.9rem;">
+                        <span style="color: var(--text-muted);">Available in stock: </span>
+                        <strong id="spm-available-stock">0</strong>
+                    </div>
+
+                    <button type="submit" class="btn btn-success" style="width: 100%;">Confirm Sale</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settlement Modal -->
+    <div class="modal" id="settlement-modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Settle Monthly Payment</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="settlement-form">
+                    <input type="hidden" id="sm-worker-id">
+                    <input type="hidden" id="sm-payable-amount">
+                    <input type="hidden" id="sm-agreed-amount">
+
+                    <div style="margin-bottom: 20px; text-align: center;">
+                        <h3 id="sm-worker-name" style="margin: 0; font-size: 1.2rem; color: var(--text-primary);">Worker
+                            Name</h3>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sm-date">Settlement Date *</label>
+                        <input type="date" id="sm-date" required>
+                    </div>
+
+                    <div
+                        style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.95rem;">
+                        <span style="color: var(--text-muted);">Agreed Base Amount:</span>
+                        <strong id="sm-display-agreed">₹0</strong>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; margin-bottom: 24px; font-size: 1.1rem; padding-top: 12px; border-top: 1px solid var(--border-glass);">
+                        <span style="color: var(--text-muted);">Final Payable:</span>
+                        <strong id="sm-display-payable" style="color: var(--text-green);">₹0</strong>
+                    </div>
+
+                    <div style="display: flex; gap: 12px;">
+                        <button type="button" class="btn btn-outline close-modal-btn" style="flex: 1;">Cancel</button>
+                        <button type="submit" class="btn btn-success" style="flex: 1;">Confirm Settlement</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restock Product Modal -->
+    <div class="modal" id="restock-product-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="rpm-title">Restock Product</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="restock-product-form">
+                    <input type="hidden" id="rpm-product-id">
+
+                    <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 20px;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                            <label for="rpm-quantity">Quantity to Add *</label>
+                            <input type="number" id="rpm-quantity" required min="1" step="1" placeholder="e.g. 50">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="padding: 12px 24px; height: 45.5px;">Add
+                            Stock</button>
+                    </div>
+
+                    <div
+                        style="padding: 12px; background: rgba(0,0,0,0.1); border-radius: 6px; margin-bottom: 24px; font-size: 0.9rem;">
+                        <span style="color: var(--text-muted);">Current stock: </span>
+                        <strong id="rpm-current-stock">0</strong>
+                    </div>
+                </form>
+
+                <div class="records-section"
+                    style="margin-top: 24px; border-top: 1px solid var(--border-glass); padding-top: 24px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="font-size: 1.1rem; margin: 0;">Restock History</h3>
+                        <div class="badge badge-cash" id="rpm-total-restocks">0 Total Restocks</div>
+                    </div>
+
+                    <div class="table-container"
+                        style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-glass); border-radius: 8px;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th style="text-align: right;">Quantity Added</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rpm-records-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metric History Modal -->
+    <div class="modal" id="metric-history-modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 id="mhm-title">Transaction History</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Description</th>
+                                <th>Type</th>
+                                <th style="text-align: right;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mhm-records-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
+
 </body>
 
 </html>

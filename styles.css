@@ -901,3 +901,13 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
 }
+
+/* Restock Button Styles */
+.btn-restock-product i {
+    color: var(--primary);
+}
+
+.btn-restock-product:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: var(--primary);
+}

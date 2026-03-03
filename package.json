@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "start": "bash scripts/start.sh"
+  },
   "dependencies": {
     "puppeteer": "^24.37.5"
   }
