@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://173.249.38.225/api';
 
 // If already logged in, redirect straight to dashboard
 if (localStorage.getItem('auth_token')) {

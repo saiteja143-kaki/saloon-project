@@ -41,7 +41,7 @@ const state = {
 };
 
 // API Service
-const API_URL = 'http://localhost:8000/api';
+const API_URL = 'http://173.249.38.225/api';
 
 const apiService = {
     authHeaders() {
