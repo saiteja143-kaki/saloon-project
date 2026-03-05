@@ -1,3 +1,31 @@
+// Auth Guard - redirect to login if no token
+(function () {
+    if (!localStorage.getItem('auth_token')) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Global fetch interceptor - auto-attach auth token to all API calls
+    const _originalFetch = window.fetch;
+    window.fetch = function (url, options = {}) {
+        const token = localStorage.getItem('auth_token');
+        if (token && typeof url === 'string' && url.includes('localhost:8000')) {
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Token ${token}`;
+            if (!options.headers['Content-Type'] && !(options.body instanceof FormData)) {
+                options.headers['Content-Type'] = 'application/json';
+            }
+        }
+        return _originalFetch(url, options).then(res => {
+            if (res.status === 401 && typeof url === 'string' && url.includes('localhost:8000')) {
+                localStorage.removeItem('auth_token');
+                window.location.href = 'login.html';
+            }
+            return res;
+        });
+    };
+})();
+
 // Global State
 const state = {
     workers: [],
@@ -6,6 +34,7 @@ const state = {
     products: [],
     productSales: [],
     attendance: [],        // today's attendance records keyed by workerId
+    appointments: [],
     dateFilter: 'today',  // 'today', '7d', '30d', 'all', 'custom'
     customStart: null,
     customEnd: null
@@ -15,9 +44,17 @@ const state = {
 const API_URL = 'http://localhost:8000/api';
 
 const apiService = {
+    authHeaders() {
+        const token = localStorage.getItem('auth_token');
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Token ${token}`
+        };
+    },
     async getWorkers() {
         try {
-            const res = await fetch(`${API_URL}/workers/`);
+            const res = await fetch(`${API_URL}/workers/`, { headers: this.authHeaders() });
+            if (res.status === 401) { localStorage.removeItem('auth_token'); window.location.href = 'login.html'; }
             return await res.json();
         } catch (e) {
             console.error('Failed to fetch workers:', e);
@@ -26,7 +63,8 @@ const apiService = {
     },
     async getTransactions() {
         try {
-            const res = await fetch(`${API_URL}/transactions/`);
+            const res = await fetch(`${API_URL}/transactions/`, { headers: this.authHeaders() });
+            if (res.status === 401) { localStorage.removeItem('auth_token'); window.location.href = 'login.html'; }
             const data = await res.json();
             // Convert string timestamp to Date object for existing logic
             return data.map(t => ({ ...t, timestamp: new Date(t.timestamp), amount: parseFloat(t.amount) }));
@@ -241,12 +279,62 @@ const apiService = {
         });
         if (!res.ok) throw new Error('Check-out failed');
         return await res.json();
+    },
+    async getAppointments() {
+        try {
+            const res = await fetch(`${API_URL}/appointments/`);
+            return await res.json();
+        } catch (e) {
+            console.error('Failed to fetch appointments:', e);
+            return [];
+        }
+    },
+    async addAppointment(appointment) {
+        try {
+            const res = await fetch(`${API_URL}/appointments/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(appointment)
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`Server error: ${text}`);
+            }
+            return await res.json();
+        } catch (e) {
+            console.error('Failed to add appointment:', e);
+            throw e;
+        }
+    },
+    async completeAppointment(id) {
+        try {
+            const res = await fetch(`${API_URL}/appointments/${id}/complete/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`Failed to complete: ${text}`);
+            }
+            return await res.json();
+        } catch (e) {
+            console.error('Failed to complete appointment:', e);
+            throw e;
+        }
     }
 };
 
 // Utilities
-const formatCurrency = (amount) => `₹${amount.toLocaleString()}`;
-const formatTime = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const formatCurrency = (amount) => '₹' + parseFloat(amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+const formatTime = (date) => {
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    return hours + ':' + minutes + ' ' + ampm;
+};
 
 // Selectors
 const DOM = {
@@ -266,6 +354,7 @@ const DOM = {
     dashCash: document.getElementById('dashboard-cash'),
     dashOnline: document.getElementById('dashboard-online'),
     dashExpenses: document.getElementById('dashboard-expenses'),
+    dashTotalRevenue: document.getElementById('dashboard-total-revenue'),
 
     // Workers
     workersGrid: document.getElementById('workers-grid'),
@@ -396,6 +485,20 @@ const DOM = {
     mhmTitle: document.getElementById('mhm-title'),
     mhmRecordsBody: document.getElementById('mhm-records-body'),
 
+    // Appointments
+    viewAppointments: document.getElementById('view-appointments'),
+    appointmentsGrid: document.getElementById('appointments-grid'),
+    btnAddAppointment: document.getElementById('btn-add-appointment'),
+    appointmentSearch: document.getElementById('appointment-search'),
+    appointmentModal: document.getElementById('appointment-modal'),
+    appointmentForm: document.getElementById('appointment-form'),
+    apName: document.getElementById('ap-name'),
+    apPhone: document.getElementById('ap-phone'),
+    apDesc: document.getElementById('ap-desc'),
+    apDate: document.getElementById('ap-date'),
+    apWorker: document.getElementById('ap-worker'),
+    apAmount: document.getElementById('ap-amount'),
+
     closeModals: document.querySelectorAll('.close-modal, .close-modal-btn')
 };
 
@@ -413,12 +516,14 @@ const app = {
         state.products = await apiService.getProducts();
         state.productSales = await apiService.getProductSales();
         state.attendance = await apiService.getAttendance();
+        state.appointments = await apiService.getAppointments();
 
         this.renderDashboard();
         this.renderWorkers();
         this.renderMemberships();
         this.renderProducts();
         this.renderExpenses();
+        this.renderAppointments();
     },
 
     setupEventListeners() {
@@ -439,6 +544,14 @@ const app = {
             DOM.editProfileForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleProfileSubmit();
+            });
+        }
+
+        // Form Submit (Transaction)
+        if (DOM.transactionForm) {
+            DOM.transactionForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleTransactionSubmit();
             });
         }
 
@@ -540,6 +653,25 @@ const app = {
             });
         }
 
+        if (DOM.btnAddAppointment) {
+            DOM.btnAddAppointment.addEventListener('click', () => {
+                this.openAppointmentModal();
+            });
+        }
+
+        if (DOM.appointmentForm) {
+            DOM.appointmentForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleAppointmentSubmit();
+            });
+        }
+
+        if (DOM.appointmentSearch) {
+            DOM.appointmentSearch.addEventListener('input', () => {
+                this.renderAppointments();
+            });
+        }
+
         // Modals Close button handler addition
         DOM.closeModals.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -553,6 +685,7 @@ const app = {
                 if (DOM.sellProductModal) DOM.sellProductModal.classList.remove('show');
                 if (DOM.restockProductModal) DOM.restockProductModal.classList.remove('show');
                 if (DOM.metricHistoryModal) DOM.metricHistoryModal.classList.remove('show');
+                if (DOM.appointmentModal) DOM.appointmentModal.classList.remove('show');
             });
         });
 
@@ -803,6 +936,7 @@ const app = {
         const stats = this.getStats();
 
         // Counter Animation effect
+        if (DOM.dashTotalRevenue) this.animateValue(DOM.dashTotalRevenue, stats.totalIncome);
         this.animateValue(DOM.dashNet, stats.netCollected);
         this.animateValue(DOM.dashCash, stats.totalCashIn);
         this.animateValue(DOM.dashOnline, stats.totalOnlineIn);
@@ -1058,7 +1192,8 @@ const app = {
 
         // Setup title
         let title = '';
-        if (metricType === 'net_revenue') title = 'Net Revenue History';
+        if (metricType === 'total_revenue') title = 'Total Revenue History';
+        else if (metricType === 'net_revenue') title = 'Net Revenue History';
         else if (metricType === 'cash_in') title = 'Cash In History';
         else if (metricType === 'online_in') title = 'Online In History';
         else if (metricType === 'expenses') title = 'Expenses History';
@@ -1098,6 +1233,8 @@ const app = {
             unifiedLedger = unifiedLedger.filter(r => r.type === 'income' && r.mode === 'online');
         } else if (metricType === 'expenses') {
             unifiedLedger = unifiedLedger.filter(r => r.type === 'expense');
+        } else if (metricType === 'total_revenue') {
+            unifiedLedger = unifiedLedger.filter(r => r.type === 'income');
         } // 'net_revenue' includes everything
 
         // Sort chronologically (newest first)
@@ -1190,8 +1327,8 @@ const app = {
                 </div>
                 <div class="worker-stats-mini" style="margin-bottom: 12px;">
                     <div class="mini-stat">
-                        <span class="label">Net Amount</span>
-                        <span class="value text-primary card-net-val">${formatCurrency(stats.netCollected)}</span>
+                        <span class="label">Total Income</span>
+                        <span class="value text-primary card-net-val">${formatCurrency(stats.totalIncome)}</span>
                     </div>
                     <div class="mini-stat">
                         <span class="label">Exp Amount</span>
@@ -1488,7 +1625,7 @@ const app = {
 
     updateWorkerModalStats(workerId) {
         const stats = this.getStats(workerId);
-        DOM.wmNet.textContent = formatCurrency(stats.netCollected);
+        DOM.wmNet.textContent = formatCurrency(stats.totalIncome); // Changed to display gross income
         DOM.wmExpectedCash.textContent = formatCurrency(Math.max(0, stats.expectedCash));
         DOM.wmOnline.textContent = formatCurrency(stats.totalOnlineIn);
         DOM.wmExpenses.textContent = formatCurrency(stats.totalExpense);
@@ -2020,16 +2157,21 @@ const app = {
             const currentYear = new Date().getFullYear();
 
             state.workers.forEach(worker => {
-                // Calculate total expenses (Advances/Deductions) assigned to this worker FOR THE CURRENT MONTH
-                // Ignore final "Monthly Salary Settlement" records so the advances sum doesn't drop
+                // Find the most recent settlement for this worker
+                const previousSettlement = state.transactions
+                    .filter(t => t.workerId === worker.id && t.desc.startsWith('Monthly Salary Settlement'))
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+
+                const cutoffTime = previousSettlement ? new Date(previousSettlement.timestamp).getTime() : 0;
+
+                // Calculate total expenses assigned to this worker occurring AFTER the last settlement
                 const workerExpenses = state.transactions
                     .filter(t => {
-                        const d = new Date(t.timestamp);
+                        const tTime = new Date(t.timestamp).getTime();
                         return t.workerId === worker.id &&
                             t.type === 'expense' &&
-                            d.getMonth() === currentMonth &&
-                            d.getFullYear() === currentYear &&
-                            !t.desc.startsWith('Monthly Salary Settlement');
+                            !t.desc.startsWith('Monthly Salary Settlement') &&
+                            tTime > cutoffTime;
                     })
                     .reduce((sum, t) => sum + t.amount, 0);
 
@@ -2098,12 +2240,11 @@ const app = {
                     if (isHidden) {
                         const workerTxs = state.transactions
                             .filter(t => {
-                                const d = new Date(t.timestamp);
+                                const tTime = new Date(t.timestamp).getTime();
                                 return t.workerId === worker.id &&
                                     t.type === 'expense' &&
-                                    d.getMonth() === currentMonth &&
-                                    d.getFullYear() === currentYear &&
-                                    !t.desc.startsWith('Monthly Salary Settlement');
+                                    !t.desc.startsWith('Monthly Salary Settlement') &&
+                                    tTime > cutoffTime;
                             })
                             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
@@ -2328,6 +2469,154 @@ const app = {
             }
         };
         window.requestAnimationFrame(step);
+    },
+
+    renderAppointments() {
+        if (!DOM.appointmentsGrid) return;
+        DOM.appointmentsGrid.innerHTML = '';
+
+        // Sort explicitly by date so upcoming ones show appropriately
+        const sorted = [...state.appointments].sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
+        const searchTerm = DOM.appointmentSearch ? DOM.appointmentSearch.value.toLowerCase() : '';
+        const filtered = sorted.filter(ap => {
+            const matchesName = ap.client_name.toLowerCase().includes(searchTerm);
+            const matchesPhone = ap.client_phone && ap.client_phone.includes(searchTerm);
+            return matchesName || matchesPhone;
+        });
+
+        if (filtered.length === 0) {
+            DOM.appointmentsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">No appointments found.</div>';
+            return;
+        }
+
+        filtered.forEach(ap => {
+            const isCompleted = ap.status === 'completed';
+            const workerObj = ap.assigned_worker ? state.workers.find(w => w.id === ap.assigned_worker) : null;
+            const workerName = workerObj ? workerObj.name : 'Unassigned';
+
+            const card = document.createElement('div');
+            card.className = 'worker-card';
+            card.innerHTML = `
+                <div class="worker-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <div class="avatar" style="background: ${isCompleted ? '#2ecc71' : 'var(--primary)'}; color: white;">
+                            <i class="fa-solid ${isCompleted ? 'fa-check' : 'fa-calendar'}"></i>
+                        </div>
+                        <div class="info">
+                            <h3 style="margin-bottom: 4px;">${ap.client_name}</h3>
+                            <p style="font-size: 0.85rem;"><i class="fa-solid fa-phone" style="margin-right: 4px;"></i> ${ap.client_phone || 'N/A'}</p>
+                        </div>
+                    </div>
+                </div>
+                <div style="padding: 16px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-muted); font-size: 0.85rem;">Service</span>
+                        <span style="font-weight: 500;">${ap.description}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-muted); font-size: 0.85rem;">Date</span>
+                        <span style="font-weight: 500;">${new Date(ap.appointment_date).toLocaleString()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-muted); font-size: 0.85rem;">Worker</span>
+                        <span style="font-weight: 500;">${workerName}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-muted); font-size: 0.85rem;">Mode</span>
+                        <span style="font-weight: 500; text-transform: capitalize;">${ap.payment_mode}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--border-glass);">
+                        <span style="color: var(--text-muted); font-size: 0.85rem;">Amount</span>
+                        <span style="font-weight: bold; color: var(--text-primary);">${formatCurrency(ap.amount)}</span>
+                    </div>
+                </div>
+                ${!isCompleted ? `<button class="btn btn-success" style="width: 100%;" onclick="app.completeAppointment(${ap.id})"><i class="fa-solid fa-check"></i> Mark as Complete</button>` : `<div style="text-align: center; color: #2ecc71; font-weight: 600;"><i class="fa-solid fa-check-circle"></i> Completed</div>`}
+            `;
+            DOM.appointmentsGrid.appendChild(card);
+        });
+    },
+
+    openAppointmentModal() {
+        if (!DOM.appointmentModal) return;
+        DOM.appointmentForm.reset();
+
+        // Default date/time to now
+        const now = new Date();
+        const localOffset = now.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(now - localOffset)).toISOString().slice(0, 16);
+        DOM.apDate.value = localISOTime;
+
+        // Populate workers dropdown
+        if (DOM.apWorker) {
+            DOM.apWorker.innerHTML = '<option value="">-- Select Worker (Optional) --</option>';
+            state.workers.forEach(w => {
+                const opt = document.createElement('option');
+                opt.value = w.id;
+                opt.textContent = w.name;
+                DOM.apWorker.appendChild(opt);
+            });
+        }
+
+        DOM.appointmentModal.classList.add('show');
+    },
+
+    async handleAppointmentSubmit() {
+        try {
+            const isoString = new Date(DOM.apDate.value).toISOString();
+            const data = {
+                client_name: DOM.apName.value,
+                client_phone: DOM.apPhone.value,
+                description: DOM.apDesc.value,
+                appointment_date: isoString,
+                amount: parseFloat(DOM.apAmount.value),
+                payment_mode: document.querySelector('input[name="ap-payment-method"]:checked').value,
+                status: 'pending'
+            };
+
+            if (DOM.apWorker.value) {
+                data.assignedWorkerId = parseInt(DOM.apWorker.value);
+            }
+
+            const newAp = await apiService.addAppointment(data);
+            state.appointments.push(newAp);
+
+            this.renderAppointments();
+            DOM.appointmentModal.classList.remove('show');
+            this.showToast('Appointment added!', 'success');
+        } catch (error) {
+            console.error(error);
+            this.showToast('Failed to add appointment', 'error');
+        }
+    },
+
+    async completeAppointment(id) {
+        if (!confirm('Mark this appointment as complete? Income will be added to the worker automatically.')) return;
+
+        try {
+            const updatedAp = await apiService.completeAppointment(id);
+            const idx = state.appointments.findIndex(a => a.id === id);
+            if (idx > -1) state.appointments[idx] = updatedAp;
+
+            // If worker was assigned, reload transactions to reflect the new income
+            if (updatedAp.assigned_worker) {
+                state.transactions = await apiService.getTransactions();
+                this.renderDashboard();
+                this.renderWorkers();
+            }
+
+            this.renderAppointments();
+            this.showToast('Appointment completed!', 'success');
+        } catch (error) {
+            console.error(error);
+            this.showToast('Failed to complete appointment', 'error');
+        }
+    },
+
+    logout() {
+        if (confirm('Are you sure you want to logout?')) {
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html';
+        }
     }
 };
 

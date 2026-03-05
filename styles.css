@@ -75,9 +75,13 @@ body {
 .brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 0 24px;
-    margin-bottom: 40px;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 12px;
+    margin: 20px 20px 40px 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .brand-icon {
@@ -94,6 +98,20 @@ body {
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+}
+
+.brand-img-icon {
+    height: 56px;
+    width: auto;
+    max-width: 60px;
+    object-fit: contain;
+}
+
+.brand-img-text {
+    height: 42px;
+    width: auto;
+    max-width: 140px;
+    object-fit: contain;
 }
 
 .nav-links {
@@ -224,9 +242,25 @@ body {
 /* Metric Cards */
 .metric-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(6, 1fr);
     gap: 24px;
     margin-bottom: 40px;
+}
+
+/* Make the first row span 2 columns each (3 items total) */
+.metric-cards>div:nth-child(1),
+.metric-cards>div:nth-child(2),
+.metric-cards>div:nth-child(3) {
+    grid-column: span 2;
+}
+
+/* Center the second row items (2 items total) */
+.metric-cards>div:nth-child(4) {
+    grid-column: 2 / 4;
+}
+
+.metric-cards>div:nth-child(5) {
+    grid-column: 4 / 6;
 }
 
 .metric-card {

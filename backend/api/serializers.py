@@ -102,3 +102,20 @@ class AttendanceSerializer(serializers.ModelSerializer):
             attendance.check_in = validated_data['check_in']
             attendance.save()
         return attendance
+
+from .models import Appointment
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = ['id', 'client_name', 'client_phone', 'description', 'appointment_date', 'amount', 'payment_mode', 'assigned_worker', 'assignedWorkerId', 'status', 'created_at']
+        
+    assignedWorkerId = serializers.IntegerField(source='assigned_worker.id', required=False, allow_null=True)
+
+    def create(self, validated_data):
+        worker_data = validated_data.pop('assigned_worker', None)
+        worker = None
+        if worker_data and worker_data.get('id'):
+            worker = Worker.objects.get(id=worker_data['id'])
+        appointment = Appointment.objects.create(assigned_worker=worker, **validated_data)
+        return appointment

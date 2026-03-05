@@ -133,3 +133,34 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         attendance.check_out = now_time
         attendance.save()
         return Response(AttendanceSerializer(attendance).data)
+
+from rest_framework.decorators import action
+from .models import Appointment
+from .serializers import AppointmentSerializer
+
+class AppointmentViewSet(viewsets.ModelViewSet):
+    queryset = Appointment.objects.all().order_by('appointment_date')
+    serializer_class = AppointmentSerializer
+
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        appointment = self.get_object()
+        
+        if appointment.status == 'completed':
+            return Response({"error": "Appointment is already completed"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        appointment.status = 'completed'
+        appointment.save()
+        
+        # Automatically create income transaction if worker assigned
+        if appointment.assigned_worker:
+            Transaction.objects.create(
+                worker=appointment.assigned_worker,
+                type='income',
+                desc=f"Appointment: {appointment.description} ({appointment.client_name})",
+                amount=appointment.amount,
+                mode=appointment.payment_mode,
+                timestamp=tz.now()
+            )
+            
+        return Response(AppointmentSerializer(appointment).data, status=status.HTTP_200_OK)

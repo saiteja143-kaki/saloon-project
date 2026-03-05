@@ -100,3 +100,20 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.worker.name} – {self.date} ({self.check_in} → {self.check_out})"
+
+class Appointment(models.Model):
+    STATUS_CHOICES = [('pending', 'Pending'), ('completed', 'Completed')]
+    PAYMENT_MODES = [('cash', 'Cash'), ('online', 'Online')]
+
+    client_name = models.CharField(max_length=255)
+    client_phone = models.CharField(max_length=20, blank=True, null=True)
+    description = models.CharField(max_length=255)
+    appointment_date = models.DateTimeField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_mode = models.CharField(max_length=10, choices=PAYMENT_MODES, default='cash')
+    assigned_worker = models.ForeignKey(Worker, on_delete=models.SET_NULL, related_name='appointments', null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.client_name} - {self.description} ({self.status})"

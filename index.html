@@ -16,8 +16,8 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="brand">
-                <i class="fa-solid fa-scissors brand-icon"></i>
-                <span class="brand-name">SalonFlow</span>
+                <img src="logo_icon.png" alt="Logo Icon" class="brand-img-icon">
+                <img src="logo_text.jpg" alt="Infinity Family Saloon & Spa" class="brand-img-text">
             </div>
 
             <nav class="nav-links">
@@ -36,6 +36,9 @@
                 <a href="#" class="nav-link" data-target="expenses">
                     <i class="fa-solid fa-file-invoice-dollar"></i> Shop Expenses
                 </a>
+                <a href="#" class="nav-link" data-target="appointments">
+                    <i class="fa-solid fa-calendar-check"></i> Appointments
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -46,6 +49,10 @@
                         <span class="admin-role">Admin</span>
                     </div>
                 </div>
+                <button id="btn-logout" onclick="app.logout()"
+                    style="width:100%; margin-top:12px; padding:10px; background:rgba(231,76,60,0.1); border:1px solid rgba(231,76,60,0.3); border-radius:8px; color:#e74c3c; font-family:'Outfit',sans-serif; font-size:0.88rem; font-weight:500; cursor:pointer; transition:all 0.2s;">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
             </div>
         </aside>
 
@@ -75,6 +82,23 @@
             <!-- Dashboard View -->
             <section id="view-dashboard" class="view-section active">
                 <div class="metric-cards">
+                    <div class="metric-card"
+                        style="display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                            <div class="metric-icon" style="background: rgba(243, 156, 18, 0.15); color: #f39c12;"><i
+                                    class="fa-solid fa-chart-pie"></i></div>
+                            <div class="metric-info">
+                                <h3>Total Revenue</h3>
+                                <p class="metric-value text-primary" id="dashboard-total-revenue">₹0</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm"
+                            style="margin-top: 15px; width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); border-radius: 6px; padding: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"
+                            onclick="app.openMetricHistory('total_revenue')"
+                            onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                            onmouseout="this.style.background='rgba(255,255,255,0.05)'"><i
+                                class="fa-solid fa-clock-rotate-left"></i> View Full History</button>
+                    </div>
                     <div class="metric-card gradient-primary"
                         style="display: flex; flex-direction: column; justify-content: space-between;">
                         <div style="display: flex; align-items: flex-start; gap: 1rem;">
@@ -82,6 +106,7 @@
                             <div class="metric-info">
                                 <h3>Total Net Revenue</h3>
                                 <p class="metric-value" id="dashboard-net">₹0</p>
+
                             </div>
                         </div>
                         <button class="btn btn-sm"
@@ -235,6 +260,26 @@
                 </div>
             </section>
 
+            <!-- Appointments View -->
+            <section id="view-appointments" class="view-section">
+                <div class="workers-header-actions"
+                    style="display: flex; gap: 16px; align-items: center; justify-content: space-between;">
+                    <div class="search-box" style="flex: 1;">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="appointment-search"
+                            placeholder="Search appointments by name or phone...">
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <button class="btn btn-primary" id="btn-add-appointment"><i class="fa-solid fa-plus"></i> Add
+                            Appointment</button>
+                    </div>
+                </div>
+
+                <div class="workers-grid" id="appointments-grid">
+                    <!-- Cards Populated by JS -->
+                </div>
+            </section>
+
             <!-- Shop Expenses View -->
             <section id="view-expenses" class="view-section">
                 <!-- Header -->
@@ -361,9 +406,11 @@
             </div>
 
             <!-- Attendance Section -->
-            <div class="transactions-section" style="margin-top: 24px; border-top: 1px solid var(--border-glass); padding-top: 24px;">
+            <div class="transactions-section"
+                style="margin-top: 24px; border-top: 1px solid var(--border-glass); padding-top: 24px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <h3><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 8px;"></i>Attendance History</h3>
+                    <h3><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 8px;"></i>Attendance
+                        History</h3>
                 </div>
                 <div class="table-container">
                     <table class="data-table">
@@ -585,6 +632,71 @@
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Membership</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Appointment Modal -->
+    <div class="modal" id="appointment-modal">
+        <div class="modal-content mini-modal">
+            <span class="close-modal">&times;</span>
+            <h2>Add Appointment</h2>
+
+            <form id="appointment-form">
+                <div class="form-group">
+                    <label for="ap-name">Client Name *</label>
+                    <input type="text" id="ap-name" required placeholder="e.g. John Doe">
+                </div>
+
+                <div class="form-group">
+                    <label for="ap-phone">Phone Number</label>
+                    <input type="text" id="ap-phone" placeholder="e.g. 9876543210">
+                </div>
+
+                <div class="form-group">
+                    <label for="ap-desc">Service Description *</label>
+                    <input type="text" id="ap-desc" required placeholder="e.g. Haircut & Beard Trimming">
+                </div>
+
+                <div class="form-group">
+                    <label for="ap-date">Date & Time *</label>
+                    <input type="datetime-local" id="ap-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="ap-worker">Assign Worker</label>
+                    <select id="ap-worker" class="form-control"
+                        style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-glass); background: rgba(0,0,0,0.1); color: var(--text-primary);">
+                        <option value="">-- Select Worker (Optional) --</option>
+                        <!-- Populated dynamically by JS -->
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="ap-amount">Amount (₹) *</label>
+                        <input type="number" id="ap-amount" required min="0" placeholder="0">
+                    </div>
+
+                    <div class="form-group" style="flex: 1;">
+                        <label>Payment Method</label>
+                        <div style="display: flex; gap: 16px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="radio" name="ap-payment-method" value="cash" checked style="width: auto;">
+                                <span> Cash</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="radio" name="ap-payment-method" value="online" style="width: auto;">
+                                <span> Online</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Appointment</button>
                 </div>
             </form>
         </div>
