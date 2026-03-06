@@ -1819,15 +1819,15 @@ const app = {
         if (!worker) return;
 
         try {
-            // Build ISO string from date (assume midnight for that date)
-            const timestamp = new Date(dateStr + 'T00:00:00').toISOString();
+            // Use current time as the settlement timestamp so ALL expenses before NOW are marked settled
+            const timestamp = new Date().toISOString();
 
             const newTx = await apiService.addTransaction({
                 workerId: workerId,
                 type: 'expense',
                 amount: payable,
-                desc: `Monthly Salary Settlement (Base: ${agreed})`,
-                mode: 'cash', // Defaulting to cash
+                desc: `Monthly Salary Settlement (Base: ${agreed}) - Date: ${dateStr}`,
+                mode: 'cash',
                 timestamp: timestamp
             });
 
