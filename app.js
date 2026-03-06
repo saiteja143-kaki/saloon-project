@@ -1007,9 +1007,11 @@ const app = {
                 totalIncome += t.amount;
                 if (t.mode === 'cash') totalCashIn += t.amount;
                 if (t.mode === 'online') totalOnlineIn += t.amount;
-            } else if (t.type === 'expense' && !t.desc.startsWith('Monthly Salary Settlement')) {
-                // Exclude settlement payouts from worker expense totals
-                totalExpense += t.amount;
+            } else if (t.type === 'expense') {
+                // Exclude settlement payouts from individual worker card expense totals, but KEEP them for Shop Dashboard stats
+                if (workerId === null || !t.desc.startsWith('Monthly Salary Settlement')) {
+                    totalExpense += t.amount;
+                }
             }
         });
 
