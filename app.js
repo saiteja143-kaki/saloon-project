@@ -575,15 +575,11 @@ const app = {
                 nextYear.setFullYear(today.getFullYear() + 1);
                 DOM.msExpireDate.valueAsDate = nextYear;
 
-                // Auto-generate unique 3-digit member ID
+                // Clear member ID field so user can enter it manually
                 if (DOM.msMemberId) {
-                    let newId = '';
-                    let isUnique = false;
-                    while (!isUnique) {
-                        newId = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-                        isUnique = !state.memberships.some(m => m.member_id === newId);
-                    }
-                    DOM.msMemberId.value = newId;
+                    DOM.msMemberId.value = '';
+                    DOM.msMemberId.readOnly = false;
+                    DOM.msMemberId.placeholder = 'Enter Member ID manually';
                 }
 
                 DOM.membershipModal.classList.add('show');

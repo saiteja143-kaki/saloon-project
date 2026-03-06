@@ -26,17 +26,8 @@ class Transaction(models.Model):
         return f"{self.type.capitalize()} - {self.amount} ({worker_name})"
 
 
-import random
-
-def generate_unique_member_id():
-    while True:
-        # Generate a random 3-digit string strictly between 000 and 999
-        new_id = f"{random.randint(0, 999):03d}"
-        if not Membership.objects.filter(member_id=new_id).exists():
-            return new_id
-
 class Membership(models.Model):
-    member_id = models.CharField(max_length=3, unique=True, default=generate_unique_member_id, editable=False)
+    member_id = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=255)
     issue_date = models.DateField()
     expire_date = models.DateField()
