@@ -543,6 +543,8 @@ const DOM = {
     apWorker: document.getElementById('ap-worker'),
     apAmount: document.getElementById('ap-amount'),
 
+    topWorkersList: document.getElementById('top-workers-list'),
+
     closeModals: document.querySelectorAll('.close-modal, .close-modal-btn')
 };
 
@@ -1027,6 +1029,56 @@ const app = {
         this.animateValue(DOM.dashExpenses, stats.totalExpense);
 
         this.renderAnalyticsChart();
+        this.renderTopWorkers();
+    },
+
+    renderTopWorkers() {
+        if (!DOM.topWorkersList) return;
+        DOM.topWorkersList.innerHTML = '';
+
+        // Calculate income for each active worker
+        const workerStats = state.workers
+            .filter(w => !w.is_blocked) // Exclude blocked workers
+            .map(w => {
+                const stats = this.getStats(w.id);
+                return {
+                    worker: w,
+                    income: stats.totalIncome
+                };
+            })
+            .filter(ws => ws.income > 0)
+            .sort((a, b) => b.income - a.income)
+            .slice(0, 3); // Top 3 workers
+
+        if (workerStats.length === 0) {
+            DOM.topWorkersList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 10px;">No active data available</div>';
+            return;
+        }
+
+        workerStats.forEach((ws, idx) => {
+            const item = document.createElement('div');
+            item.className = 'worker-list-item';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+            item.style.padding = '10px 0';
+            item.style.borderBottom = idx < workerStats.length - 1 ? '1px solid var(--border-glass)' : 'none';
+
+            item.innerHTML = `
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div class="avatar" style="width: 32px; height: 32px; font-size: 0.9rem;">
+                        ${ws.worker.photo ? '<img src="' + ws.worker.photo + '" style="width:100%; height:100%; object-fit:cover;">' : ws.worker.initials}
+                    </div>
+                    <div>
+                        <div style="font-weight: 500; font-size: 0.95rem;">${ws.worker.name}</div>
+                    </div>
+                </div>
+                <div style="font-weight: bold; color: var(--text-green);">
+                    ${formatCurrency(ws.income)}
+                </div>
+            `;
+            DOM.topWorkersList.appendChild(item);
+        });
     },
 
     // ─── Analytics Chart ────────────────────────────────────────────
@@ -1376,7 +1428,13 @@ const app = {
             if (a.date === todayStr) todayAttMap[a.workerId] = a;
         });
 
-        state.workers.forEach(worker => {
+        // Sort workers: Active first, Blocked second
+        const sortedWorkers = [...state.workers].sort((a, b) => {
+            if (a.is_blocked === b.is_blocked) return 0;
+            return a.is_blocked ? 1 : -1;
+        });
+
+        sortedWorkers.forEach(worker => {
             const stats = this.getStats(worker.id);
             const att = todayAttMap[worker.id];
 
@@ -1398,6 +1456,19 @@ const app = {
 
             const card = document.createElement('div');
             card.className = 'worker-card';
+
+            // Check if blocked
+            const isBlocked = worker.is_blocked;
+
+            if (isBlocked) {
+                card.style.opacity = '0.6';
+                card.style.filter = 'grayscale(100%)';
+                card.style.pointerEvents = 'none'; // Re-enable pointer events for the rejoin button alone below
+
+                statusBadge = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(231,76,60,0.15);color:#e74c3c;">🚫 RESIGNED</span>`;
+                attButtons = ''; // No attendance for blocked
+            }
+
             card.innerHTML = `
                 <div class="worker-card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div style="display: flex; gap: 12px; align-items: center;">
@@ -1419,6 +1490,7 @@ const app = {
                         <span class="value text-red card-exp-val">${formatCurrency(stats.totalExpense)}</span>
                     </div>
                 </div>
+                ${!isBlocked ? `
                 <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                     ${attButtons}
                 </div>
@@ -1426,33 +1498,39 @@ const app = {
                      <button class="btn btn-sm btn-success btn-add-income-card" style="flex: 1;"><i class="fa-solid fa-plus"></i> Income</button>
                     <button class="btn btn-sm btn-danger btn-add-expense-card" style="flex: 1;"><i class="fa-solid fa-minus"></i> Expense</button>
                 </div>
+                ` : `
+                <div class="worker-card-actions" style="display: flex; justify-content: center;">
+                    <button class="btn btn-sm btn-rejoin-worker" style="pointer-events: auto; padding: 8px 16px; border-radius: 20px; background: rgba(46,204,113,0.15); border: 1px solid rgba(46,204,113,0.5); color: #2ecc71; font-weight: bold;"><i class="fa-solid fa-user-check"></i> Rejoin Salon</button>
+                </div>
+                `}
             `;
 
             card.addEventListener('click', (e) => {
+                if (isBlocked) return; // Don't open modal if blocked
                 if (!e.target.closest('.btn-add-income-card') &&
                     !e.target.closest('.btn-add-expense-card') &&
                     !e.target.closest('.btn-att-checkin') &&
-                    !e.target.closest('.btn-att-checkout')) {
+                    !e.target.closest('.btn-att-checkout') &&
+                    !e.target.closest('.btn-rejoin-worker')) {
                     this.openWorkerModal(worker.id);
                 }
             });
 
-            const incomeBtn = card.querySelector('.btn-add-income-card');
-            const expenseBtn = card.querySelector('.btn-add-expense-card');
-            const checkinBtn = card.querySelector('.btn-att-checkin');
-            const checkoutBtn = card.querySelector('.btn-att-checkout');
+            if (incomeBtn) {
+                incomeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    DOM.tmWorkerId.value = worker.id;
+                    this.openTransactionModal('income');
+                });
+            }
 
-            incomeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                DOM.tmWorkerId.value = worker.id;
-                this.openTransactionModal('income');
-            });
-
-            expenseBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                DOM.tmWorkerId.value = worker.id;
-                this.openTransactionModal('expense');
-            });
+            if (expenseBtn) {
+                expenseBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    DOM.tmWorkerId.value = worker.id;
+                    this.openTransactionModal('expense');
+                });
+            }
 
             if (checkinBtn) {
                 checkinBtn.addEventListener('click', async (e) => {
@@ -1469,6 +1547,22 @@ const app = {
                 });
             }
 
+            const rejoinBtn = card.querySelector('.btn-rejoin-worker');
+            if (rejoinBtn) {
+                rejoinBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`Are you sure you want to unblock ${worker.name} and let them rejoin the salon?`)) return;
+                    try {
+                        await apiService.blockWorker(worker.id, false);
+                        const idx = state.workers.findIndex(w => w.id === worker.id);
+                        if (idx !== -1) state.workers[idx].is_blocked = false;
+                        this.renderWorkers();
+                        this.showToast(`${worker.name} has rejoined the salon.`, 'success');
+                    } catch (err) {
+                        this.showToast('Failed to unblock worker.', 'error');
+                    }
+                });
+            }
             DOM.workersGrid.appendChild(card);
         });
     },
@@ -2647,12 +2741,14 @@ const app = {
         // Populate workers dropdown
         if (DOM.apWorker) {
             DOM.apWorker.innerHTML = '<option value="">-- Select Worker (Optional) --</option>';
-            state.workers.forEach(w => {
-                const opt = document.createElement('option');
-                opt.value = w.id;
-                opt.textContent = w.name;
-                DOM.apWorker.appendChild(opt);
-            });
+            state.workers
+                .filter(w => !w.is_blocked) // Exclude blocked workers
+                .forEach(w => {
+                    const opt = document.createElement('option');
+                    opt.value = w.id;
+                    opt.textContent = w.name;
+                    DOM.apWorker.appendChild(opt);
+                });
         }
 
         DOM.appointmentModal.classList.add('show');
