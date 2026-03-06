@@ -237,6 +237,19 @@ const apiService = {
             throw e;
         }
     },
+    async deleteProduct(id) {
+        try {
+            const res = await fetch(`${API_URL}/products/${id}/`, {
+                method: 'DELETE',
+                headers: this.authHeaders()
+            });
+            if (!res.ok) throw new Error('Failed to delete product');
+            return true;
+        } catch (e) {
+            console.error('Failed to delete product:', e);
+            throw e;
+        }
+    },
     async getProductSales() {
         try {
             const res = await fetch(`${API_URL}/product-sales/`, { headers: this.authHeaders() });
@@ -2221,6 +2234,9 @@ const app = {
                             <p style="font-size: 0.75rem; color: var(--text-muted);">Added on: ${dateAddedStr}</p>
                         </div>
                     </div>
+                    <button class="btn-icon btn-delete-product" title="Delete Product" style="color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 4px;">
+                        <i class="fa-solid fa-trash hover-red" style="transition: color 0.2s;"></i>
+                    </button>
                 </div>
                 
                 <div style="padding: 16px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
@@ -2331,6 +2347,21 @@ const app = {
                 }
 
                 DOM.restockProductModal.classList.add('show');
+            });
+
+            const btnDelete = card.querySelector('.btn-delete-product');
+            btnDelete.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (confirm(`Are you sure you want to delete ${product.name}?`)) {
+                    try {
+                        await apiService.deleteProduct(product.id);
+                        state.products = state.products.filter(p => p.id !== product.id);
+                        app.renderProducts();
+                        app.showToast('Product deleted successfully', 'success');
+                    } catch (err) {
+                        app.showToast('Failed to delete product', 'error');
+                    }
+                }
             });
 
             DOM.productsGrid.appendChild(card);
