@@ -20,7 +20,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 class WorkerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Worker
-        fields = ['id', 'name', 'initials', 'phone', 'photo']
+        fields = ['id', 'name', 'initials', 'phone', 'photo', 'is_blocked']
 
 
 class MembershipRecordSerializer(serializers.ModelSerializer):

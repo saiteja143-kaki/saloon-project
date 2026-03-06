@@ -104,6 +104,33 @@ const apiService = {
             throw e;
         }
     },
+    async deleteWorker(id) {
+        try {
+            const res = await fetch(`${API_URL}/workers/${id}/`, {
+                method: 'DELETE',
+                headers: this.authHeaders()
+            });
+            if (!res.ok) throw new Error('Failed to delete worker');
+            return true;
+        } catch (e) {
+            console.error('Failed to delete worker:', e);
+            throw e;
+        }
+    },
+    async blockWorker(id, isBlocked) {
+        try {
+            const res = await fetch(`${API_URL}/workers/${id}/`, {
+                method: 'PATCH',
+                headers: this.authHeaders(),
+                body: JSON.stringify({ is_blocked: isBlocked })
+            });
+            if (!res.ok) throw new Error('Failed to update worker status');
+            return await res.json();
+        } catch (e) {
+            console.error('Failed to block/unblock worker:', e);
+            throw e;
+        }
+    },
     async addTransaction(tx) {
         try {
             const res = await fetch(`${API_URL}/transactions/`, {
@@ -401,6 +428,14 @@ const DOM = {
     epPhotoUpload: document.getElementById('ep-photo-upload'),
     epPhotoData: document.getElementById('ep-photo-data'),
 
+    // Resign Modal
+    btnResignWorker: document.getElementById('btn-resign-worker'),
+    resignModal: document.getElementById('resign-modal'),
+    resignWorkerId: document.getElementById('resign-worker-id'),
+    resignWorkerName: document.getElementById('resign-worker-name'),
+    btnBlockWorker: document.getElementById('btn-block-worker'),
+    btnDeleteWorker: document.getElementById('btn-delete-worker'),
+
     // Memberships
     membershipsGrid: document.getElementById('memberships-grid'),
     membershipSearch: document.getElementById('membership-search'),
@@ -553,6 +588,49 @@ const app = {
             DOM.editProfileForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleProfileSubmit();
+            });
+        }
+
+        // Resign Modal — Block Worker
+        if (DOM.btnBlockWorker) {
+            DOM.btnBlockWorker.addEventListener('click', async () => {
+                const workerId = parseInt(DOM.resignWorkerId.value);
+                const worker = state.workers.find(w => w.id === workerId);
+                if (!worker) return;
+                try {
+                    const updated = await apiService.blockWorker(workerId, true);
+                    const idx = state.workers.findIndex(w => w.id === workerId);
+                    if (idx !== -1) state.workers[idx].is_blocked = true;
+                    DOM.resignModal.classList.remove('show');
+                    this.renderWorkers();
+                    this.renderExpenses();
+                    this.renderDashboard();
+                    this.showToast(`${worker.name} has been blocked (resigned).`, 'success');
+                } catch (e) {
+                    this.showToast('Failed to block worker.', 'error');
+                }
+            });
+        }
+
+        // Resign Modal — Permanently Delete Worker
+        if (DOM.btnDeleteWorker) {
+            DOM.btnDeleteWorker.addEventListener('click', async () => {
+                const workerId = parseInt(DOM.resignWorkerId.value);
+                const worker = state.workers.find(w => w.id === workerId);
+                if (!worker) return;
+                if (!confirm(`⚠️ Permanently delete ${worker.name}? This will remove ALL their transactions and history. This CANNOT be undone.`)) return;
+                try {
+                    await apiService.deleteWorker(workerId);
+                    state.workers = state.workers.filter(w => w.id !== workerId);
+                    state.transactions = state.transactions.filter(t => t.workerId !== workerId);
+                    DOM.resignModal.classList.remove('show');
+                    this.renderWorkers();
+                    this.renderExpenses();
+                    this.renderDashboard();
+                    this.showToast(`${worker.name} has been permanently deleted.`, 'success');
+                } catch (e) {
+                    this.showToast('Failed to delete worker.', 'error');
+                }
             });
         }
 
@@ -1627,6 +1705,18 @@ const app = {
         this.renderWorkerAttendance(workerId);
 
         DOM.workerModal.classList.add('show');
+
+        // Wire up Resigned button
+        if (DOM.btnResignWorker) {
+            DOM.btnResignWorker.onclick = () => {
+                DOM.resignWorkerId.value = worker.id;
+                DOM.resignWorkerName.textContent = `What would you like to do with ${worker.name}?`;
+                DOM.workerModal.classList.remove('show');
+                DOM.resignModal.classList.add('show');
+            };
+            // If already blocked, hide resign button (handled in worker card via rejoin)
+            DOM.btnResignWorker.style.display = worker.is_blocked ? 'none' : '';
+        }
     },
 
     updateWorkerModalStats(workerId) {

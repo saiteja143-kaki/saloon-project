@@ -344,8 +344,13 @@
                     <div>
                         <h2 id="wm-name">Worker Name</h2>
                         <p class="text-muted" id="wm-phone" style="margin-bottom: 8px;">Daily Summary</p>
-                        <button class="btn btn-outline btn-sm" id="btn-edit-profile"><i class="fa-solid fa-pen"></i>
-                            Edit Profile</button>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-outline btn-sm" id="btn-edit-profile"><i class="fa-solid fa-pen"></i>
+                                Edit Profile</button>
+                            <button class="btn btn-sm" id="btn-resign-worker"
+                                style="background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.5); color: #e74c3c;"><i
+                                    class="fa-solid fa-user-slash"></i> Resigned</button>
+                        </div>
                     </div>
                 </div>
                 <div class="worker-actions">
@@ -737,6 +742,40 @@
 
     <!-- Alert Toast -->
     <div id="toast-container"></div>
+
+    <!-- Resigned Options Modal -->
+    <div class="modal" id="resign-modal">
+        <div class="modal-content mini-modal" style="max-width: 420px;">
+            <span class="close-modal">&times;</span>
+            <div style="text-align: center; padding: 8px 0 20px;">
+                <div
+                    style="width: 60px; height: 60px; border-radius: 50%; background: rgba(231,76,60,0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                    <i class="fa-solid fa-user-slash" style="font-size: 1.5rem; color: #e74c3c;"></i>
+                </div>
+                <h2 style="margin-bottom: 8px;">Worker Resigned</h2>
+                <p id="resign-worker-name" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">
+                    What would you like to do?</p>
+            </div>
+            <input type="hidden" id="resign-worker-id">
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button id="btn-block-worker" class="btn"
+                    style="background: rgba(243,156,18,0.15); border: 1px solid rgba(243,156,18,0.5); color: #f39c12; padding: 14px; font-size: 1rem; border-radius: 10px;">
+                    <i class="fa-solid fa-ban" style="margin-right: 8px;"></i>
+                    <strong>Block Worker</strong>
+                    <div style="font-size: 0.8rem; font-weight: 400; margin-top: 4px; opacity: 0.8;">Worker moved to end
+                        of list. History preserved. Can rejoin later.</div>
+                </button>
+                <button id="btn-delete-worker" class="btn"
+                    style="background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.5); color: #e74c3c; padding: 14px; font-size: 1rem; border-radius: 10px;">
+                    <i class="fa-solid fa-trash" style="margin-right: 8px;"></i>
+                    <strong>Permanently Delete</strong>
+                    <div style="font-size: 0.8rem; font-weight: 400; margin-top: 4px; opacity: 0.8;">Removes worker and
+                        ALL transaction history forever.</div>
+                </button>
+                <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Add Shop Expense Modal -->
     <div class="modal" id="shop-expense-modal">
