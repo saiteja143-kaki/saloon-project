@@ -77,7 +77,7 @@ const apiService = {
         try {
             const res = await fetch(`${API_URL}/workers/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.authHeaders(),
                 body: JSON.stringify(worker)
             });
             if (!res.ok) {
@@ -95,7 +95,7 @@ const apiService = {
         try {
             const res = await fetch(`${API_URL}/workers/${id}/`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.authHeaders(),
                 body: JSON.stringify(worker)
             });
             return await res.json();
@@ -108,7 +108,7 @@ const apiService = {
         try {
             const res = await fetch(`${API_URL}/transactions/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.authHeaders(),
                 body: JSON.stringify(tx)
             });
             if (!res.ok) {
@@ -125,7 +125,7 @@ const apiService = {
     },
     async getMemberships() {
         try {
-            const res = await fetch(`${API_URL}/memberships/`);
+            const res = await fetch(`${API_URL}/memberships/`, { headers: this.authHeaders() });
             return await res.json();
         } catch (e) {
             console.error('Failed to fetch memberships:', e);
@@ -136,7 +136,7 @@ const apiService = {
         try {
             const res = await fetch(`${API_URL}/memberships/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.authHeaders(),
                 body: JSON.stringify(membership)
             });
             if (!res.ok) {
@@ -152,7 +152,7 @@ const apiService = {
     },
     async getMembershipRecords() {
         try {
-            const res = await fetch(`${API_URL}/membership-records/`);
+            const res = await fetch(`${API_URL}/membership-records/`, { headers: this.authHeaders() });
             if (!res.ok) return [];
             return await res.json();
         } catch (e) {
@@ -163,7 +163,8 @@ const apiService = {
     async deleteMembership(id) {
         try {
             const res = await fetch(`${API_URL}/memberships/${id}/`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: this.authHeaders()
             });
             if (!res.ok) throw new Error('Failed to delete membership');
             return true;
@@ -176,7 +177,7 @@ const apiService = {
         try {
             const res = await fetch(`${API_URL}/membership-records/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.authHeaders(),
                 body: JSON.stringify(record)
             });
             if (!res.ok) throw new Error('Server error');
@@ -188,7 +189,7 @@ const apiService = {
     },
     async getProducts() {
         try {
-            const res = await fetch(`${API_URL}/products/`);
+            const res = await fetch(`${API_URL}/products/`, { headers: this.authHeaders() });
             return await res.json();
         } catch (e) {
             console.error('Failed to fetch products:', e);
@@ -199,7 +200,7 @@ const apiService = {
         try {
             const res = await fetch(`${API_URL}/products/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.authHeaders(),
                 body: JSON.stringify(product)
             });
             if (!res.ok) throw new Error('Failed to add product');
@@ -211,7 +212,7 @@ const apiService = {
     },
     async getProductSales() {
         try {
-            const res = await fetch(`${API_URL}/product-sales/`);
+            const res = await fetch(`${API_URL}/product-sales/`, { headers: this.authHeaders() });
             if (!res.ok) throw new Error('Failed to fetch product sales');
             return await res.json();
         } catch (e) {
@@ -223,7 +224,7 @@ const apiService = {
         try {
             const res = await fetch(`${API_URL}/product-sales/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.authHeaders(),
                 body: JSON.stringify(saleRecord)
             });
             if (!res.ok) {
@@ -240,7 +241,7 @@ const apiService = {
         try {
             const res = await fetch(`${API_URL}/product-restocks/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.authHeaders(),
                 body: JSON.stringify(restockData)
             });
             if (!res.ok) {
@@ -255,7 +256,7 @@ const apiService = {
     },
     async getAttendance() {
         try {
-            const res = await fetch(`${API_URL}/attendance/`);
+            const res = await fetch(`${API_URL}/attendance/`, { headers: this.authHeaders() });
             return await res.json();
         } catch (e) {
             console.error('Failed to fetch attendance:', e);
@@ -265,7 +266,7 @@ const apiService = {
     async checkIn(workerId) {
         const res = await fetch(`${API_URL}/attendance/`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this.authHeaders(),
             body: JSON.stringify({ workerId })
         });
         if (!res.ok) throw new Error('Check-in failed');
@@ -274,7 +275,7 @@ const apiService = {
     async checkOut(attendanceId) {
         const res = await fetch(`${API_URL}/attendance/${attendanceId}/`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this.authHeaders(),
             body: JSON.stringify({})
         });
         if (!res.ok) throw new Error('Check-out failed');
@@ -282,7 +283,7 @@ const apiService = {
     },
     async getAppointments() {
         try {
-            const res = await fetch(`${API_URL}/appointments/`);
+            const res = await fetch(`${API_URL}/appointments/`, { headers: this.authHeaders() });
             return await res.json();
         } catch (e) {
             console.error('Failed to fetch appointments:', e);
@@ -293,7 +294,7 @@ const apiService = {
         try {
             const res = await fetch(`${API_URL}/appointments/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.authHeaders(),
                 body: JSON.stringify(appointment)
             });
             if (!res.ok) {
@@ -310,7 +311,7 @@ const apiService = {
         try {
             const res = await fetch(`${API_URL}/appointments/${id}/complete/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: this.authHeaders()
             });
             if (!res.ok) {
                 const text = await res.text();
