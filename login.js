@@ -1,4 +1,4 @@
-const API_BASE = 'http://173.249.38.225/api';
+const API_BASE = 'https://hrinfinity.fastcopies.in/api';
 
 // If already logged in, redirect straight to dashboard
 if (localStorage.getItem('auth_token')) {
