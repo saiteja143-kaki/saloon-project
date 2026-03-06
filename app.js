@@ -1836,8 +1836,7 @@ const app = {
                 ...newTx,
                 timestamp: new Date(newTx.timestamp),
                 amount: parseFloat(newTx.amount),
-                workerId: newTx.worker,
-                worker: null
+                workerId: workerId   // use the integer workerId directly, not newTx.worker
             });
 
             DOM.settlementModal.classList.remove('show');
