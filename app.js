@@ -1529,6 +1529,7 @@ const app = {
                 }
             });
 
+            const incomeBtn = card.querySelector('.btn-add-income-card');
             if (incomeBtn) {
                 incomeBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1537,6 +1538,7 @@ const app = {
                 });
             }
 
+            const expenseBtn = card.querySelector('.btn-add-expense-card');
             if (expenseBtn) {
                 expenseBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1545,6 +1547,7 @@ const app = {
                 });
             }
 
+            const checkinBtn = card.querySelector('.btn-att-checkin');
             if (checkinBtn) {
                 checkinBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
@@ -1552,6 +1555,7 @@ const app = {
                 });
             }
 
+            const checkoutBtn = card.querySelector('.btn-att-checkout');
             if (checkoutBtn) {
                 checkoutBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
@@ -1576,6 +1580,7 @@ const app = {
                     }
                 });
             }
+
             DOM.workersGrid.appendChild(card);
         });
     },
