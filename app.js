@@ -906,7 +906,8 @@ const app = {
                 totalIncome += t.amount;
                 if (t.mode === 'cash') totalCashIn += t.amount;
                 if (t.mode === 'online') totalOnlineIn += t.amount;
-            } else if (t.type === 'expense') {
+            } else if (t.type === 'expense' && !t.desc.startsWith('Monthly Salary Settlement')) {
+                // Exclude settlement payouts from worker expense totals
                 totalExpense += t.amount;
             }
         });
@@ -1629,7 +1630,10 @@ const app = {
     },
 
     renderWorkerTransactions(workerId, txType = 'all') {
-        let txs = state.transactions.filter(t => t.workerId === workerId);
+        let txs = state.transactions.filter(t =>
+            t.workerId === workerId &&
+            !t.desc.startsWith('Monthly Salary Settlement')  // exclude settlement payouts
+        );
 
         // Apply global date filter
         txs = txs.filter(t => this.isDateInRange(new Date(t.timestamp)));
