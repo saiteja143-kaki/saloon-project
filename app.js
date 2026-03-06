@@ -336,6 +336,14 @@ const formatTime = (date) => {
     minutes = minutes < 10 ? '0' + minutes : minutes;
     return hours + ':' + minutes + ' ' + ampm;
 };
+// Convert 24-hour "HH:MM" string to 12-hour "h:MM AM/PM" string
+const to12Hour = (timeStr) => {
+    if (!timeStr) return '-';
+    const [h, m] = timeStr.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 || 12;
+    return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+};
 
 // Selectors
 const DOM = {
@@ -1300,7 +1308,7 @@ const app = {
                 statusBadge = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(255,255,255,0.07);color:var(--text-muted);">⚪ Not Started</span>`;
                 attButtons = `<button class="btn btn-sm btn-att-checkin" style="flex:1;background:rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.4);color:#2ecc71;border-radius:6px;padding:7px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;" data-worker="${worker.id}"><i class="fa-solid fa-clock"></i> Check In</button>`;
             } else if (att.check_in && !att.check_out) {
-                statusBadge = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(46,204,113,0.15);color:#2ecc71;">🟢 In since ${att.check_in.slice(0, 5)}</span>`;
+                statusBadge = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(46,204,113,0.15);color:#2ecc71;">🟢 In since ${to12Hour(att.check_in)}</span>`;
                 attButtons = `<button class="btn btn-sm btn-att-checkout" style="flex:1;background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;border-radius:6px;padding:7px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;" data-worker="${worker.id}" data-attid="${att.id}"><i class="fa-solid fa-clock"></i> Check Out</button>`;
             } else {
                 const hrs = att.check_in && att.check_out
@@ -1438,8 +1446,8 @@ const app = {
             const statusLabel = (!a.check_in) ? 'Absent' : (!a.check_out) ? 'Active' : 'Complete';
             return `<tr>
                 <td style="font-weight:500;">${a.date}</td>
-                <td style="color:#2ecc71;">${a.check_in ? a.check_in.slice(0, 5) : '-'}</td>
-                <td style="color:#e74c3c;">${a.check_out ? a.check_out.slice(0, 5) : '-'}</td>
+                <td style="color:#2ecc71;">${to12Hour(a.check_in)}</td>
+                <td style="color:#e74c3c;">${to12Hour(a.check_out)}</td>
                 <td>${hoursWorked}</td>
                 <td><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}22;">${statusLabel}</span></td>
             </tr>`;
