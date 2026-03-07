@@ -1,4 +1,7 @@
-const API_BASE = 'http://localhost:8000/api';
+const protocol = window.location.protocol;
+const hostname = window.location.hostname;
+const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':8000' : '';
+const API_BASE = `${protocol}//${hostname}${port}/api`;
 
 // If already logged in, redirect straight to dashboard
 if (localStorage.getItem('auth_token')) {
