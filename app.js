@@ -41,7 +41,11 @@ const state = {
 };
 
 // API Service
-const API_URL = 'http://localhost:8000/api';
+// Use dynamic host for the API so it works on both localhost and deployed servers
+const protocol = window.location.protocol;
+const hostname = window.location.hostname;
+const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':8000' : '';
+const API_URL = `${protocol}//${hostname}${port}/api`;
 
 const apiService = {
     authHeaders() {
