@@ -21,6 +21,13 @@ class MembershipRecordViewSet(viewsets.ModelViewSet):
     queryset = MembershipRecord.objects.all().order_by('-timestamp')
     serializer_class = MembershipRecordSerializer
 
+    def get_queryset(self):
+        queryset = self.queryset
+        membership_id = self.request.query_params.get('membership_id')
+        if membership_id is not None:
+            queryset = queryset.filter(membership_id=membership_id)
+        return queryset
+
 from .models import Product, ProductSale, ProductRestock
 from .serializers import ProductSerializer, ProductSaleSerializer, ProductRestockSerializer
 from rest_framework import status

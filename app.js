@@ -9,7 +9,7 @@
     const _originalFetch = window.fetch;
     window.fetch = function (url, options = {}) {
         const token = localStorage.getItem('auth_token');
-        if (token && typeof url === 'string' && url.includes('hrinfinity.fastcopies.in')) {
+        if (token && typeof url === 'string' && url.includes('localhost:8000')) {
             options.headers = options.headers || {};
             options.headers['Authorization'] = `Token ${token}`;
             if (!options.headers['Content-Type'] && !(options.body instanceof FormData)) {
@@ -17,7 +17,7 @@
             }
         }
         return _originalFetch(url, options).then(res => {
-            if (res.status === 401 && typeof url === 'string' && url.includes('hrinfinity.fastcopies.in')) {
+            if (res.status === 401 && typeof url === 'string' && url.includes('localhost:8000')) {
                 localStorage.removeItem('auth_token');
                 window.location.href = 'login.html';
             }
@@ -41,7 +41,7 @@ const state = {
 };
 
 // API Service
-const API_URL = 'https://hrinfinity.fastcopies.in/api';
+const API_URL = 'http://localhost:8000/api';
 
 const apiService = {
     authHeaders() {
@@ -177,9 +177,12 @@ const apiService = {
             throw e;
         }
     },
-    async getMembershipRecords() {
+    async getMembershipRecords(membershipId = null) {
         try {
-            const res = await fetch(`${API_URL}/membership-records/`, { headers: this.authHeaders() });
+            const url = membershipId
+                ? `${API_URL}/membership-records/?membership_id=${membershipId}`
+                : `${API_URL}/membership-records/`;
+            const res = await fetch(url, { headers: this.authHeaders() });
             if (!res.ok) return [];
             return await res.json();
         } catch (e) {
@@ -347,6 +350,33 @@ const apiService = {
             throw e;
         }
     },
+    async updateAppointment(id, data) {
+        try {
+            const res = await fetch(`${API_URL}/appointments/${id}/`, {
+                method: 'PATCH',
+                headers: this.authHeaders(),
+                body: JSON.stringify(data)
+            });
+            if (!res.ok) throw new Error();
+            return await res.json();
+        } catch (e) {
+            console.error('Failed to update appointment:', e);
+            throw e;
+        }
+    },
+    async deleteAppointment(id) {
+        try {
+            const res = await fetch(`${API_URL}/appointments/${id}/`, {
+                method: 'DELETE',
+                headers: this.authHeaders()
+            });
+            if (!res.ok) throw new Error();
+            return true;
+        } catch (e) {
+            console.error('Failed to delete appointment:', e);
+            throw e;
+        }
+    },
     async completeAppointment(id) {
         try {
             const res = await fetch(`${API_URL}/appointments/${id}/complete/`, {
@@ -403,6 +433,7 @@ const DOM = {
     dashCash: document.getElementById('dashboard-cash'),
     dashOnline: document.getElementById('dashboard-online'),
     dashExpenses: document.getElementById('dashboard-expenses'),
+    dashProductsRevenue: document.getElementById('dashboard-products-revenue'),
     dashTotalRevenue: document.getElementById('dashboard-total-revenue'),
 
     // Workers
@@ -511,6 +542,7 @@ const DOM = {
     recordForm: document.getElementById('record-form'),
     rmMembershipId: document.getElementById('rm-membership-id'),
     rmDesc: document.getElementById('rm-desc'),
+    rmWorker: document.getElementById('rm-worker'),
     rmAmount: document.getElementById('rm-amount'),
     rmDiscountedAmount: document.getElementById('rm-discounted-amount'),
 
@@ -555,6 +587,11 @@ const DOM = {
     apDate: document.getElementById('ap-date'),
     apWorker: document.getElementById('ap-worker'),
     apAmount: document.getElementById('ap-amount'),
+
+    rescheduleModal: document.getElementById('reschedule-modal'),
+    rescheduleForm: document.getElementById('reschedule-form'),
+    rescheduleApId: document.getElementById('reschedule-ap-id'),
+    rescheduleApDate: document.getElementById('reschedule-ap-date'),
 
     topWorkersList: document.getElementById('top-workers-list'),
 
@@ -764,6 +801,13 @@ const app = {
             });
         }
 
+        if (DOM.rescheduleForm) {
+            DOM.rescheduleForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleRescheduleSubmit();
+            });
+        }
+
         if (DOM.appointmentSearch) {
             DOM.appointmentSearch.addEventListener('input', () => {
                 this.renderAppointments();
@@ -784,6 +828,7 @@ const app = {
                 if (DOM.restockProductModal) DOM.restockProductModal.classList.remove('show');
                 if (DOM.metricHistoryModal) DOM.metricHistoryModal.classList.remove('show');
                 if (DOM.appointmentModal) DOM.appointmentModal.classList.remove('show');
+                if (DOM.rescheduleModal) DOM.rescheduleModal.classList.remove('show');
             });
         });
 
@@ -1001,6 +1046,7 @@ const app = {
         let totalCashIn = 0;
         let totalOnlineIn = 0;
         let totalExpense = 0;
+        let productsRevenue = 0;
 
         txs.forEach(t => {
             if (t.type === 'income') {
@@ -1015,22 +1061,21 @@ const app = {
             }
         });
 
-        // Add Product Sales to Dashboard (Only for shop-wide stats, workerId === null)
+        // Calculate Product Sales separately
         if (workerId === null) {
             let pSales = state.productSales.filter(sale => this.isDateInRange(new Date(sale.timestamp)));
 
             pSales.forEach(sale => {
                 const amount = parseFloat(sale.sale_price) || 0;
-                totalIncome += amount;
-                if (sale.payment_method === 'cash') totalCashIn += amount;
-                if (sale.payment_method === 'online') totalOnlineIn += amount;
+                productsRevenue += amount;
+                // Note: User requested to remove product amount out of general cash/online/total metrics
             });
         }
 
         const netCollected = totalIncome - totalExpense;
         const expectedCash = totalCashIn - totalExpense;
 
-        return { totalIncome, totalCashIn, totalOnlineIn, totalExpense, netCollected, expectedCash };
+        return { totalIncome, totalCashIn, totalOnlineIn, totalExpense, netCollected, expectedCash, productsRevenue };
     },
 
     renderDashboard() {
@@ -1038,10 +1083,13 @@ const app = {
 
         // Counter Animation effect
         if (DOM.dashTotalRevenue) this.animateValue(DOM.dashTotalRevenue, stats.totalIncome);
-        this.animateValue(DOM.dashNet, stats.netCollected);
-        this.animateValue(DOM.dashCash, stats.totalCashIn);
-        this.animateValue(DOM.dashOnline, stats.totalOnlineIn);
-        this.animateValue(DOM.dashExpenses, stats.totalExpense);
+        // Net Collected only uses general service income/expense (or maybe we add products to net? 
+        // User requested removing product amount from total net rev. Product cost isn't tracked, so we just remove everything)
+        if (DOM.dashNet) this.animateValue(DOM.dashNet, stats.netCollected);
+        if (DOM.dashCash) this.animateValue(DOM.dashCash, stats.totalCashIn);
+        if (DOM.dashOnline) this.animateValue(DOM.dashOnline, stats.totalOnlineIn);
+        if (DOM.dashExpenses) this.animateValue(DOM.dashExpenses, stats.totalExpense);
+        if (DOM.dashProductsRevenue) this.animateValue(DOM.dashProductsRevenue, stats.productsRevenue);
 
         this.renderAnalyticsChart();
         this.renderTopWorkers();
@@ -1206,15 +1254,6 @@ const app = {
             else buckets[key].expense += parseFloat(t.amount) || 0;
         });
 
-        // Fill from product sales
-        state.productSales.forEach(s => {
-            const d = new Date(s.timestamp);
-            if (d < rangeStart || d > rangeEnd) return;
-            const key = bucketKey(d);
-            initBucket(key);
-            buckets[key].revenue += parseFloat(s.sale_price) || 0;
-        });
-
         const labels = Object.keys(buckets);
         const revenue = labels.map(k => buckets[k].revenue);
         const expense = labels.map(k => buckets[k].expense);
@@ -1348,45 +1387,55 @@ const app = {
         else if (metricType === 'cash_in') title = 'Cash In History';
         else if (metricType === 'online_in') title = 'Online In History';
         else if (metricType === 'expenses') title = 'Expenses History';
+        else if (metricType === 'products_revenue') title = 'Products Revenue History';
 
         if (DOM.mhmTitle) DOM.mhmTitle.textContent = title;
 
         // Build Unified Ledger within the selected Date Range
         let unifiedLedger = [];
 
-        // 1. Add Transactions
-        state.transactions.filter(t => this.isDateInRange(new Date(t.timestamp))).forEach(t => {
-            unifiedLedger.push({
-                timestamp: new Date(t.timestamp),
-                desc: t.desc || 'Transaction',
-                type: t.type,
-                mode: t.mode,
-                amount: parseFloat(t.amount)
+        if (metricType === 'products_revenue') {
+            state.productSales.filter(s => this.isDateInRange(new Date(s.timestamp))).forEach(s => {
+                const prod = state.products.find(p => p.id === s.productId) || {};
+                unifiedLedger.push({
+                    timestamp: new Date(s.timestamp),
+                    desc: `Product Sale: ${prod.name || 'Unknown'} (x${s.quantity_sold})`,
+                    type: 'income',
+                    mode: s.payment_method || 'cash',
+                    amount: parseFloat(s.sale_price) || 0
+                });
             });
-        });
+        } else {
+            // 1. Add Transactions
+            state.transactions.filter(t => this.isDateInRange(new Date(t.timestamp))).forEach(t => {
+                let description = t.desc || 'Transaction';
+                if (t.workerId) {
+                    const w = state.workers.find(wx => wx.id === t.workerId);
+                    if (w) {
+                        description = `[${w.name}] ` + description;
+                    }
+                }
 
-        // 2. Add Product Sales (as 'income')
-        state.productSales.filter(s => this.isDateInRange(new Date(s.timestamp))).forEach(s => {
-            const prod = state.products.find(p => p.id === s.productId) || {};
-            unifiedLedger.push({
-                timestamp: new Date(s.timestamp),
-                desc: `Product Sale: ${prod.name || 'Unknown'} (x${s.quantity_sold})`,
-                type: 'income',
-                mode: s.payment_method || 'cash',
-                amount: parseFloat(s.sale_price) || 0
+                unifiedLedger.push({
+                    timestamp: new Date(t.timestamp),
+                    desc: description,
+                    type: t.type,
+                    mode: t.mode,
+                    amount: parseFloat(t.amount)
+                });
             });
-        });
 
-        // Apply Metric Filters
-        if (metricType === 'cash_in') {
-            unifiedLedger = unifiedLedger.filter(r => r.type === 'income' && r.mode === 'cash');
-        } else if (metricType === 'online_in') {
-            unifiedLedger = unifiedLedger.filter(r => r.type === 'income' && r.mode === 'online');
-        } else if (metricType === 'expenses') {
-            unifiedLedger = unifiedLedger.filter(r => r.type === 'expense');
-        } else if (metricType === 'total_revenue') {
-            unifiedLedger = unifiedLedger.filter(r => r.type === 'income');
-        } // 'net_revenue' includes everything
+            // Apply Metric Filters
+            if (metricType === 'cash_in') {
+                unifiedLedger = unifiedLedger.filter(r => r.type === 'income' && r.mode === 'cash');
+            } else if (metricType === 'online_in') {
+                unifiedLedger = unifiedLedger.filter(r => r.type === 'income' && r.mode === 'online');
+            } else if (metricType === 'expenses') {
+                unifiedLedger = unifiedLedger.filter(r => r.type === 'expense');
+            } else if (metricType === 'total_revenue') {
+                unifiedLedger = unifiedLedger.filter(r => r.type === 'income');
+            } // 'net_revenue' includes everything
+        }
 
         // Sort chronologically (newest first)
         unifiedLedger.sort((a, b) => b.timestamp - a.timestamp);
@@ -1766,6 +1815,17 @@ const app = {
 
             DOM.btnAddRecord.addEventListener('click', () => {
                 if (DOM.recordForm) DOM.recordForm.reset();
+
+                // Populate Worker Dropdown
+                if (DOM.rmWorker) {
+                    DOM.rmWorker.innerHTML = '<option value="">-- Select Worker --</option>';
+                    state.workers.forEach(w => {
+                        if (!w.is_blocked) {
+                            DOM.rmWorker.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+                        }
+                    });
+                }
+
                 if (DOM.addRecordModal) DOM.addRecordModal.classList.add('show');
             });
         }
@@ -2042,7 +2102,7 @@ const app = {
                 workerId: workerId,
                 type: 'expense',
                 amount: payable,
-                desc: `Monthly Salary Settlement (Base: ${agreed}) - Date: ${dateStr}`,
+                desc: `Monthly Salary Settlement - ${worker.name} (Base: ${agreed}) - Date: ${dateStr}`,
                 mode: 'cash',
                 timestamp: timestamp
             });
@@ -2151,8 +2211,13 @@ const app = {
 
         const membershipId = parseInt(DOM.rmMembershipId.value);
         const desc = DOM.rmDesc ? DOM.rmDesc.value.trim() : '';
+        const workerId = DOM.rmWorker && DOM.rmWorker.value ? parseInt(DOM.rmWorker.value) : null;
         const amountStr = DOM.rmAmount ? DOM.rmAmount.value : '0';
         const originalAmount = parseFloat(amountStr);
+
+        // Get selected payment method
+        const paymentRadio = document.querySelector('input[name="rm-payment-method"]:checked');
+        const paymentMethod = paymentRadio ? paymentRadio.value : 'cash';
 
         if (!membershipId || !desc || !originalAmount || originalAmount <= 0) {
             this.showToast('Please fill all required fields correctly.', 'error');
@@ -2163,9 +2228,11 @@ const app = {
 
         const newRecord = {
             membershipId: membershipId,
+            workerId: workerId,
             service_desc: desc,
             original_amount: originalAmount,
-            discounted_amount: discountedAmount
+            discounted_amount: discountedAmount,
+            mode: paymentMethod
         };
 
         try {
@@ -2178,6 +2245,13 @@ const app = {
             // Refresh the Detailed Modal Records
             const records = await apiService.getMembershipRecords(membershipId);
             this.renderMembershipRecords(records);
+
+            // Reload global data to show new transactions
+            await this.loadData();
+
+            // Re-render other views if needed based on the new transactions
+            this.renderDashboard();
+            this.renderExpenses();
 
             // Update Stats locally on the modal
             let totalDiscount = 0;
@@ -2759,8 +2833,20 @@ const app = {
                         <span style="color: var(--text-muted); font-size: 0.85rem;">Amount</span>
                         <span style="font-weight: bold; color: var(--text-primary);">${formatCurrency(ap.amount)}</span>
                     </div>
+                    </div>
                 </div>
-                ${!isCompleted ? `<button class="btn btn-success" style="width: 100%;" onclick="app.completeAppointment(${ap.id})"><i class="fa-solid fa-check"></i> Mark as Complete</button>` : `<div style="text-align: center; color: #2ecc71; font-weight: 600;"><i class="fa-solid fa-check-circle"></i> Completed</div>`}
+                ${!isCompleted ? `
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                    <button class="btn btn-sm btn-outline" style="flex:1;" onclick="app.openRescheduleModal(${ap.id}, '${ap.appointment_date}')"><i class="fa-solid fa-clock"></i> Reschedule</button>
+                    <button class="btn btn-sm btn-danger" style="flex:1;" onclick="app.deleteAppointment(${ap.id})"><i class="fa-solid fa-trash"></i> Delete</button>
+                </div>
+                <button class="btn btn-success" style="width: 100%;" onclick="app.completeAppointment(${ap.id})"><i class="fa-solid fa-check"></i> Mark as Complete</button>
+                ` : `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: #2ecc71; font-weight: 600;"><i class="fa-solid fa-check-circle"></i> Completed</div>
+                    <button class="btn btn-sm btn-danger" onclick="app.deleteAppointment(${ap.id})"><i class="fa-solid fa-trash"></i> Delete</button>
+                </div>
+                `}
             `;
             DOM.appointmentsGrid.appendChild(card);
         });
@@ -2818,6 +2904,56 @@ const app = {
         } catch (error) {
             console.error(error);
             this.showToast('Failed to add appointment', 'error');
+        }
+    },
+
+    openRescheduleModal(id, currentIsoDate) {
+        if (!DOM.rescheduleModal) return;
+        DOM.rescheduleForm.reset();
+        DOM.rescheduleApId.value = id;
+
+        if (currentIsoDate) {
+            const d = new Date(currentIsoDate);
+            const localOffset = d.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(d - localOffset)).toISOString().slice(0, 16);
+            DOM.rescheduleApDate.value = localISOTime;
+        }
+
+        DOM.rescheduleModal.classList.add('show');
+    },
+
+    async handleRescheduleSubmit() {
+        try {
+            const id = parseInt(DOM.rescheduleApId.value);
+            const isoString = new Date(DOM.rescheduleApDate.value).toISOString();
+
+            const updatedAp = await apiService.updateAppointment(id, { appointment_date: isoString });
+
+            const index = state.appointments.findIndex(a => a.id === id);
+            if (index !== -1) {
+                state.appointments[index] = updatedAp;
+            }
+
+            this.renderAppointments();
+            DOM.rescheduleModal.classList.remove('show');
+            this.showToast('Appointment rescheduled!', 'success');
+        } catch (error) {
+            console.error(error);
+            this.showToast('Failed to reschedule appointment', 'error');
+        }
+    },
+
+    async deleteAppointment(id) {
+        if (!confirm('Are you sure you want to delete this appointment?')) return;
+
+        try {
+            await apiService.deleteAppointment(id);
+            state.appointments = state.appointments.filter(a => a.id !== id);
+            this.renderAppointments();
+            this.showToast('Appointment deleted', 'success');
+        } catch (error) {
+            console.error(error);
+            this.showToast('Failed to delete appointment', 'error');
         }
     },
 

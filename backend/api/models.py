@@ -41,6 +41,7 @@ class Membership(models.Model):
 
 class MembershipRecord(models.Model):
     membership = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name='records')
+    worker = models.ForeignKey('Worker', on_delete=models.SET_NULL, null=True, blank=True, related_name='membership_records')
     service_desc = models.CharField(max_length=255)
     original_amount = models.DecimalField(max_digits=10, decimal_places=2)
     discounted_amount = models.DecimalField(max_digits=10, decimal_places=2)

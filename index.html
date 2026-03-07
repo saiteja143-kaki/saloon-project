@@ -7,7 +7,7 @@
     <title>SalonFlow - Admin Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=1.2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
@@ -82,6 +82,7 @@
             <!-- Dashboard View -->
             <section id="view-dashboard" class="view-section active">
                 <div class="metric-cards">
+                    <!-- Top 3 -->
                     <div class="metric-card"
                         style="display: flex; flex-direction: column; justify-content: space-between;">
                         <div style="display: flex; align-items: flex-start; gap: 1rem;">
@@ -119,6 +120,24 @@
                     <div class="metric-card"
                         style="display: flex; flex-direction: column; justify-content: space-between;">
                         <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                            <div class="metric-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                            <div class="metric-info">
+                                <h3>Total Expenses</h3>
+                                <p class="metric-value text-red" id="dashboard-expenses">₹0</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm"
+                            style="margin-top: 15px; width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-red); border-radius: 6px; padding: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"
+                            onclick="app.openMetricHistory('expenses')"
+                            onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                            onmouseout="this.style.background='rgba(255,255,255,0.05)'"><i
+                                class="fa-solid fa-clock-rotate-left"></i> View Full History</button>
+                    </div>
+
+                    <!-- Bottom 3 -->
+                    <div class="metric-card"
+                        style="display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; align-items: flex-start; gap: 1rem;">
                             <div class="metric-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
                             <div class="metric-info">
                                 <h3>Total Cash In</h3>
@@ -151,15 +170,17 @@
                     <div class="metric-card"
                         style="display: flex; flex-direction: column; justify-content: space-between;">
                         <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                            <div class="metric-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                            <div class="metric-icon"
+                                style="background: rgba(139, 92, 246, 0.15); color: var(--primary);"><i
+                                    class="fa-solid fa-box-open"></i></div>
                             <div class="metric-info">
-                                <h3>Total Expenses</h3>
-                                <p class="metric-value text-red" id="dashboard-expenses">₹0</p>
+                                <h3>Products Revenue</h3>
+                                <p class="metric-value text-primary" id="dashboard-products-revenue">₹0</p>
                             </div>
                         </div>
                         <button class="btn btn-sm"
-                            style="margin-top: 15px; width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-red); border-radius: 6px; padding: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"
-                            onclick="app.openMetricHistory('expenses')"
+                            style="margin-top: 15px; width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--primary); border-radius: 6px; padding: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"
+                            onclick="app.openMetricHistory('products_revenue')"
                             onmouseover="this.style.background='rgba(255,255,255,0.1)'"
                             onmouseout="this.style.background='rgba(255,255,255,0.05)'"><i
                                 class="fa-solid fa-clock-rotate-left"></i> View Full History</button>
@@ -572,10 +593,35 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="rm-worker">Assign Worker</label>
+                    <select id="rm-worker" class="form-control"
+                        style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-glass); background: rgba(0,0,0,0.1); color: var(--text-primary);">
+                        <option value="">-- Select Worker --</option>
+                        <!-- Populated dynamically by JS -->
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label for="rm-amount">Total Amount (₹)</label>
                     <input type="number" id="rm-amount" placeholder="0" required min="1">
                     <small class="text-muted">Enter the full amount. A 20% discount will be calculated
                         automatically.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <div style="display: flex; gap: 16px; margin-top: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                            <input type="radio" name="rm-payment-method" value="cash" checked style="width: auto;">
+                            <span style="color: var(--text-primary);"><i class="fa-solid fa-money-bill-wave"
+                                    style="color: var(--text-green); margin-right: 4px;"></i> Cash</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                            <input type="radio" name="rm-payment-method" value="online" style="width: auto;">
+                            <span style="color: var(--text-primary);"><i class="fa-solid fa-qrcode"
+                                    style="color: var(--primary); margin-right: 4px;"></i> Online/UPI</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="form-group"
@@ -702,6 +748,26 @@
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Appointment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reschedule Appointment Modal -->
+    <div class="modal" id="reschedule-modal">
+        <div class="modal-content mini-modal">
+            <span class="close-modal">&times;</span>
+            <h2>Reschedule Appointment</h2>
+
+            <form id="reschedule-form">
+                <input type="hidden" id="reschedule-ap-id">
+                <div class="form-group">
+                    <label for="reschedule-ap-date">New Date & Time *</label>
+                    <input type="datetime-local" id="reschedule-ap-date" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update</button>
                 </div>
             </form>
         </div>

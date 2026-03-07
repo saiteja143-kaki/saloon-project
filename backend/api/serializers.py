@@ -26,14 +26,36 @@ class WorkerSerializer(serializers.ModelSerializer):
 class MembershipRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = MembershipRecord
-        fields = ['id', 'membershipId', 'service_desc', 'original_amount', 'discounted_amount', 'timestamp']
+        fields = ['id', 'membershipId', 'workerId', 'service_desc', 'original_amount', 'discounted_amount', 'timestamp', 'mode']
         
     membershipId = serializers.IntegerField(source='membership.id')
+    workerId = serializers.IntegerField(source='worker.id', required=False, allow_null=True)
+    mode = serializers.CharField(write_only=True, required=False)
     
     def create(self, validated_data):
         membership_id = validated_data.pop('membership')['id']
         membership = Membership.objects.get(id=membership_id)
-        record = MembershipRecord.objects.create(membership=membership, **validated_data)
+        
+        worker_data = validated_data.pop('worker', None)
+        worker = None
+        if worker_data and worker_data.get('id'):
+            worker = Worker.objects.get(id=worker_data['id'])
+            
+        mode = validated_data.pop('mode', 'cash')
+            
+        record = MembershipRecord.objects.create(membership=membership, worker=worker, **validated_data)
+        
+        if worker:
+            from django.utils import timezone as tz
+            Transaction.objects.create(
+                worker=worker,
+                type='income',
+                desc=f"Membership Service: {record.service_desc} ({membership.name})",
+                amount=record.discounted_amount,
+                mode=mode,
+                timestamp=tz.now()
+            )
+            
         return record
 
 

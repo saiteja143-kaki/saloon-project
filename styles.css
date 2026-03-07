@@ -247,20 +247,9 @@ body {
     margin-bottom: 40px;
 }
 
-/* Make the first row span 2 columns each (3 items total) */
-.metric-cards>div:nth-child(1),
-.metric-cards>div:nth-child(2),
-.metric-cards>div:nth-child(3) {
+/* Make all cards span 2 columns each (3 items per row, 2 rows total) */
+.metric-cards>div {
     grid-column: span 2;
-}
-
-/* Center the second row items (2 items total) */
-.metric-cards>div:nth-child(4) {
-    grid-column: 2 / 4;
-}
-
-.metric-cards>div:nth-child(5) {
-    grid-column: 4 / 6;
 }
 
 .metric-card {
