@@ -43,3 +43,12 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Sign In';
     }
 });
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('SW: Registered', reg))
+            .catch(err => console.log('SW: Registration failed', err));
+    });
+}
