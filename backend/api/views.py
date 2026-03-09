@@ -28,6 +28,14 @@ class MembershipRecordViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(membership_id=membership_id)
         return queryset
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        transaction = instance.transaction
+        if transaction:
+            transaction.delete()  # This also deletes the MembershipRecord due to CASCADE
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return super().destroy(request, *args, **kwargs)
+
 from .models import Product, ProductSale, ProductRestock
 from .serializers import ProductSerializer, ProductSaleSerializer, ProductRestockSerializer
 from rest_framework import status
@@ -71,6 +79,14 @@ class ProductSaleViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Restore stock
+        product = instance.product
+        product.stock_quantity += instance.quantity_sold
+        product.save()
+        return super().destroy(request, *args, **kwargs)
+
 class ProductRestockViewSet(viewsets.ModelViewSet):
     queryset = ProductRestock.objects.all().order_by('-timestamp')
     serializer_class = ProductRestockSerializer
@@ -98,6 +114,14 @@ class ProductRestockViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        product = instance.product
+        # Deduct stock
+        product.stock_quantity -= instance.quantity_added
+        product.save()
+        return super().destroy(request, *args, **kwargs)
 
 
 from django.utils import timezone as tz
@@ -157,11 +181,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response({"error": "Appointment is already completed"}, status=status.HTTP_400_BAD_REQUEST)
             
         appointment.status = 'completed'
-        appointment.save()
         
         # Automatically create income transaction if worker assigned
         if appointment.assigned_worker:
-            Transaction.objects.create(
+            tx = Transaction.objects.create(
                 worker=appointment.assigned_worker,
                 type='income',
                 desc=f"Appointment: {appointment.description} ({appointment.client_name})",
@@ -169,5 +192,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 mode=appointment.payment_mode,
                 timestamp=tz.now()
             )
+            appointment.transaction = tx
+            
+        appointment.save()
             
         return Response(AppointmentSerializer(appointment).data, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        transaction = instance.transaction
+        if transaction:
+            transaction.delete()  # This also deletes the Appointment due to CASCADE
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return super().destroy(request, *args, **kwargs)

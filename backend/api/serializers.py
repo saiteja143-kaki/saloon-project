@@ -4,9 +4,11 @@ from .models import Worker, Transaction, Membership, MembershipRecord
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ['id', 'workerId', 'type', 'desc', 'amount', 'mode', 'timestamp']
+        fields = ['id', 'workerId', 'type', 'desc', 'amount', 'mode', 'timestamp', 'membership_record_id', 'appointment_id']
         
     workerId = serializers.IntegerField(source='worker.id', required=False, allow_null=True)
+    membership_record_id = serializers.IntegerField(source='membership_record.id', read_only=True)
+    appointment_id = serializers.IntegerField(source='appointment.id', read_only=True)
     
     def create(self, validated_data):
         worker_data = validated_data.pop('worker', None)
@@ -47,7 +49,7 @@ class MembershipRecordSerializer(serializers.ModelSerializer):
         
         if worker:
             from django.utils import timezone as tz
-            Transaction.objects.create(
+            tx = Transaction.objects.create(
                 worker=worker,
                 type='income',
                 desc=f"Membership Service: {record.service_desc} ({membership.name})",
@@ -55,6 +57,8 @@ class MembershipRecordSerializer(serializers.ModelSerializer):
                 mode=mode,
                 timestamp=tz.now()
             )
+            record.transaction = tx
+            record.save()
             
         return record
 

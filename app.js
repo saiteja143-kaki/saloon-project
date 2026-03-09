@@ -381,6 +381,58 @@ const apiService = {
             throw e;
         }
     },
+    async deleteTransaction(id) {
+        try {
+            const res = await fetch(`${API_URL}/transactions/${id}/`, {
+                method: 'DELETE',
+                headers: this.authHeaders()
+            });
+            if (!res.ok) throw new Error();
+            return true;
+        } catch (e) {
+            console.error('Failed to delete transaction:', e);
+            throw e;
+        }
+    },
+    async deleteMembershipRecord(id) {
+        try {
+            const res = await fetch(`${API_URL}/membership-records/${id}/`, {
+                method: 'DELETE',
+                headers: this.authHeaders()
+            });
+            if (!res.ok) throw new Error();
+            return true;
+        } catch (e) {
+            console.error('Failed to delete membership record:', e);
+            throw e;
+        }
+    },
+    async deleteProductSale(id) {
+        try {
+            const res = await fetch(`${API_URL}/product-sales/${id}/`, {
+                method: 'DELETE',
+                headers: this.authHeaders()
+            });
+            if (!res.ok) throw new Error();
+            return true;
+        } catch (e) {
+            console.error('Failed to delete product sale:', e);
+            throw e;
+        }
+    },
+    async deleteProductRestock(id) {
+        try {
+            const res = await fetch(`${API_URL}/product-restocks/${id}/`, {
+                method: 'DELETE',
+                headers: this.authHeaders()
+            });
+            if (!res.ok) throw new Error();
+            return true;
+        } catch (e) {
+            console.error('Failed to delete product restock:', e);
+            throw e;
+        }
+    },
     async completeAppointment(id) {
         try {
             const res = await fetch(`${API_URL}/appointments/${id}/complete/`, {
@@ -640,6 +692,12 @@ const app = {
         });
 
         // Form Submit (Profile Edit)
+        if (DOM.btnEditProfile) {
+            DOM.btnEditProfile.addEventListener('click', () => {
+                this.openEditProfileModal();
+            });
+        }
+
         if (DOM.editProfileForm) {
             DOM.editProfileForm.addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -1402,6 +1460,8 @@ const app = {
             state.productSales.filter(s => this.isDateInRange(new Date(s.timestamp))).forEach(s => {
                 const prod = state.products.find(p => p.id === s.productId) || {};
                 unifiedLedger.push({
+                    id: s.id,
+                    recordType: 'product_sale',
                     timestamp: new Date(s.timestamp),
                     desc: `Product Sale: ${prod.name || 'Unknown'} (x${s.quantity_sold})`,
                     type: 'income',
@@ -1421,6 +1481,8 @@ const app = {
                 }
 
                 unifiedLedger.push({
+                    id: t.id,
+                    recordType: 'transaction',
                     timestamp: new Date(t.timestamp),
                     desc: description,
                     type: t.type,
@@ -1477,6 +1539,11 @@ const app = {
                     <td>${record.desc}</td>
                     <td>${typeHtml}</td>
                     <td class="${amountClass} font-bold" style="text-align: right;">${sign}${formatCurrency(record.amount)}</td>
+                    <td style="text-align: right;">
+                        <button class="btn btn-sm btn-outline text-red" onclick="app.deleteRecord('${record.recordType}', ${record.id})" title="Delete Record">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
                 `;
                 DOM.mhmRecordsBody.appendChild(tr);
             });
@@ -1855,6 +1922,11 @@ const app = {
                 <td><span class="text-primary">${formatCurrency(r.original_amount)}</span></td>
                 <td><span class="text-green">${formatCurrency(r.original_amount - r.discounted_amount)}</span></td>
                 <td><span style="font-weight: bold; color: var(--text-green);">${formatCurrency(r.discounted_amount)}</span></td>
+                <td style="text-align: right;">
+                    <button class="btn btn-sm btn-outline text-red" onclick="app.deleteRecord('membership_record', ${r.id})" title="Delete Record">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
             `;
             DOM.mdmRecordsBody.appendChild(tr);
         });
@@ -1952,6 +2024,11 @@ const app = {
                 <td>${t.desc}</td>
                 <td>${modeBadge}</td>
                 <td class="${amountClass} font-bold">${sign}${formatCurrency(t.amount)}</td>
+                <td style="text-align: right;">
+                    <button class="btn btn-sm btn-outline text-red" onclick="app.deleteRecord('transaction', ${t.id})" title="Delete Transaction">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
             `;
             DOM.wmTransactionsBody.appendChild(tr);
         });
@@ -1967,15 +2044,18 @@ const app = {
             DOM.tmWorkerId.required = false;
             DOM.tmWorkerId.value = '';
             DOM.tmPaymentModeGroup.style.display = 'block';
+            if (DOM.tmQuickTags) DOM.tmQuickTags.style.display = 'none';
         } else {
             DOM.tmWorkerId.parentElement.style.display = 'block';
             DOM.tmWorkerId.required = true;
             if (type === 'income') {
                 DOM.tmTitle.textContent = 'Add Income / Payment';
                 DOM.tmPaymentModeGroup.style.display = 'block';
+                if (DOM.tmQuickTags) DOM.tmQuickTags.style.display = 'flex';
             } else {
                 DOM.tmTitle.textContent = 'Add Expense';
                 DOM.tmPaymentModeGroup.style.display = 'none'; // Assume expenses are taken from cash
+                if (DOM.tmQuickTags) DOM.tmQuickTags.style.display = 'none';
             }
         }
 
@@ -2034,6 +2114,65 @@ const app = {
             } catch (e) {
                 this.showToast('Failed to update profile.', 'error');
             }
+        }
+    },
+
+    async deleteRecord(type, id) {
+        if (!confirm(`Are you sure you want to permanently delete this ${type.replace('_', ' ')}?`)) return;
+
+        try {
+            if (type === 'transaction') {
+                await apiService.deleteTransaction(id);
+                state.transactions = state.transactions.filter(t => t.id !== id);
+            } else if (type === 'membership_record') {
+                await apiService.deleteMembershipRecord(id);
+                // Also remove associated transaction if it exists in state
+                const txId = state.transactions.find(t => t.membership_record_id === id)?.id;
+                if (txId) state.transactions = state.transactions.filter(t => t.id !== txId);
+            } else if (type === 'appointment') {
+                await apiService.deleteAppointment(id);
+                state.appointments = state.appointments.filter(a => a.id !== id);
+                // Also remove associated transaction if it exists in state
+                const txId = state.transactions.find(t => t.appointment_id === id)?.id;
+                if (txId) state.transactions = state.transactions.filter(t => t.id !== txId);
+            } else if (type === 'product_sale') {
+                await apiService.deleteProductSale(id);
+                state.productSales = state.productSales.filter(s => s.id !== id);
+                // Also update products state (stock will be updated on backend, but we should sync or refetch)
+                const products = await apiService.getProducts();
+                state.products = products;
+            } else if (type === 'product_restock') {
+                await apiService.deleteProductRestock(id);
+                // Refresh products to get updated stock
+                const products = await apiService.getProducts();
+                state.products = products;
+            }
+
+            this.showToast(`${type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')} deleted permanently.`, 'success');
+
+            // Refresh all relevant views
+            this.refreshAllViews();
+
+            // If in a modal, might need to refresh it specifically
+            if (DOM.workerModal.classList.contains('show')) {
+                const workerId = parseInt(DOM.tmWorkerId.value);
+                this.updateWorkerModalStats(workerId);
+                this.renderWorkerTransactions(workerId, DOM.wmTypeFilter ? DOM.wmTypeFilter.value : 'all');
+            }
+            if (DOM.membershipDetailModal.classList.contains('show')) {
+                const memberId = parseInt(document.getElementById('rm-membership-id').value);
+                this.openMembershipDetailModal(memberId);
+            }
+            if (DOM.metricHistoryModal.classList.contains('show')) {
+                // Re-open metric history to refresh (hacky but works)
+                // We'd need to know the current metricType though. 
+                // Let's assume the user can just close and re-open or we keep track of it.
+                // For now, refreshAllViews handles the background.
+            }
+
+        } catch (e) {
+            console.error('Delete Error:', e);
+            this.showToast('Failed to delete record.', 'error');
         }
     },
 
@@ -2420,6 +2559,11 @@ const app = {
                                     <td style="text-align: right;">
                                         <span style="color: var(--text-green); font-weight: bold;">+${r.quantity_added}</span>
                                     </td>
+                                    <td style="text-align: right;">
+                                        <button class="btn btn-sm btn-outline text-red" onclick="app.deleteRecord('product_restock', ${r.id})" title="Delete Restock">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                             `;
                         }).join('');
@@ -2564,6 +2708,11 @@ const app = {
                                     <td>${t.timestamp.toLocaleDateString()}</td>
                                     <td>${t.desc}</td>
                                     <td style="text-align: right; color: var(--text-red);">-₹${t.amount}</td>
+                                    <td style="text-align: right;">
+                                        <button class="btn btn-sm btn-outline text-red" onclick="app.deleteRecord('transaction', ${t.id})" title="Delete Expense">
+                                            <i class="fa-solid fa-trash-can" style="font-size: 0.75rem;"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                             `).join('');
                         }
@@ -2948,17 +3097,8 @@ const app = {
     },
 
     async deleteAppointment(id) {
-        if (!confirm('Are you sure you want to delete this appointment?')) return;
-
-        try {
-            await apiService.deleteAppointment(id);
-            state.appointments = state.appointments.filter(a => a.id !== id);
-            this.renderAppointments();
-            this.showToast('Appointment deleted', 'success');
-        } catch (error) {
-            console.error(error);
-            this.showToast('Failed to delete appointment', 'error');
-        }
+        await this.deleteRecord('appointment', id);
+        this.renderAppointments();
     },
 
     async completeAppointment(id) {

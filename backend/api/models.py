@@ -42,6 +42,7 @@ class Membership(models.Model):
 class MembershipRecord(models.Model):
     membership = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name='records')
     worker = models.ForeignKey('Worker', on_delete=models.SET_NULL, null=True, blank=True, related_name='membership_records')
+    transaction = models.OneToOneField('Transaction', on_delete=models.CASCADE, null=True, blank=True, related_name='membership_record')
     service_desc = models.CharField(max_length=255)
     original_amount = models.DecimalField(max_digits=10, decimal_places=2)
     discounted_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -105,6 +106,7 @@ class Appointment(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_mode = models.CharField(max_length=10, choices=PAYMENT_MODES, default='cash')
     assigned_worker = models.ForeignKey(Worker, on_delete=models.SET_NULL, related_name='appointments', null=True, blank=True)
+    transaction = models.OneToOneField('Transaction', on_delete=models.CASCADE, null=True, blank=True, related_name='appointment')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
 
