@@ -607,6 +607,7 @@ const DOM = {
     recordForm: document.getElementById('record-form'),
     rmMembershipId: document.getElementById('rm-membership-id'),
     rmDesc: document.getElementById('rm-desc'),
+    rmQuickTags: document.getElementById('rm-quick-tags'),
     rmWorker: document.getElementById('rm-worker'),
     rmAmount: document.getElementById('rm-amount'),
     rmDiscountedAmount: document.getElementById('rm-discounted-amount'),
@@ -966,6 +967,20 @@ const app = {
             DOM.tmQuickTags.addEventListener('click', (e) => {
                 if (e.target.classList.contains('tag')) {
                     const descInput = document.getElementById('tm-desc');
+                    const val = e.target.dataset.val;
+                    if (descInput && descInput.value) {
+                        descInput.value += ', ' + val;
+                    } else if (descInput) {
+                        descInput.value = val;
+                    }
+                }
+            });
+        }
+
+        if (DOM.rmQuickTags) {
+            DOM.rmQuickTags.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tag')) {
+                    const descInput = document.getElementById('rm-desc');
                     const val = e.target.dataset.val;
                     if (descInput && descInput.value) {
                         descInput.value += ', ' + val;
