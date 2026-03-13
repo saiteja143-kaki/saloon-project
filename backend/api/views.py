@@ -205,3 +205,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             transaction.delete()  # This also deletes the Appointment due to CASCADE
             return Response(status=status.HTTP_204_NO_CONTENT)
         return super().destroy(request, *args, **kwargs)
+
+from .models import Note
+from .serializers import NoteSerializer
+
+class NoteViewSet(viewsets.ModelViewSet):
+    queryset = Note.objects.all().order_by('-timestamp')
+    serializer_class = NoteSerializer

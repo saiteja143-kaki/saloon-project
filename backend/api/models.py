@@ -112,3 +112,13 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"{self.client_name} - {self.description} ({self.status})"
+
+class Note(models.Model):
+    name = models.CharField(max_length=255)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    village = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField()
+    timestamp = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Note: {self.name} - {self.timestamp}"

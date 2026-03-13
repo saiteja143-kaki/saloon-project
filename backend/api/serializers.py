@@ -145,3 +145,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
             worker = Worker.objects.get(id=worker_data['id'])
         appointment = Appointment.objects.create(assigned_worker=worker, **validated_data)
         return appointment
+
+from .models import Note
+
+class NoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Note
+        fields = ['id', 'name', 'phone_number', 'village', 'description', 'timestamp']

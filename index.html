@@ -45,6 +45,9 @@
                 <a href="#" class="nav-link" data-target="appointments">
                     <i class="fa-solid fa-calendar-check"></i> Appointments
                 </a>
+                <a href="#" class="nav-link" data-target="notes">
+                    <i class="fa-solid fa-note-sticky"></i> Notes
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -303,6 +306,26 @@
                 </div>
 
                 <div class="workers-grid" id="appointments-grid">
+                    <!-- Cards Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Notes View -->
+            <section id="view-notes" class="view-section">
+                <div class="workers-header-actions"
+                    style="display: flex; gap: 16px; align-items: center; justify-content: space-between;">
+                    <div class="search-box" style="flex: 1;">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="note-search"
+                            placeholder="Search notes by name or village...">
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <button class="btn btn-primary" id="btn-add-note"><i class="fa-solid fa-plus"></i> Add
+                            Note</button>
+                    </div>
+                </div>
+
+                <div class="workers-grid" id="notes-grid">
                     <!-- Cards Populated by JS -->
                 </div>
             </section>
@@ -798,6 +821,44 @@
                     <button type="submit" class="btn btn-primary">Update</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Note Modal -->
+    <div class="modal" id="note-modal">
+        <div class="modal-content mini-modal">
+            <span class="close-modal">&times;</span>
+            <h2 id="nm-title">Add Note</h2>
+
+            <form id="note-form">
+                <input type="hidden" id="nm-id">
+                <div class="form-group">
+                    <label for="nm-name">Name *</label>
+                    <input type="text" id="nm-name" required placeholder="e.g. Rahul Sharma">
+                </div>
+
+                <div class="form-group">
+                    <label for="nm-phone">Phone Number</label>
+                    <input type="text" id="nm-phone" placeholder="e.g. 9876543210">
+                </div>
+
+                <div class="form-group">
+                    <label for="nm-village">Village</label>
+                    <input type="text" id="nm-village" placeholder="e.g. Rampur">
+                </div>
+
+                <div class="form-group">
+                    <label for="nm-desc">Description *</label>
+                    <textarea id="nm-desc" required placeholder="Enter note description..." style="width: 100%; min-height: 100px; padding: 10px; border-radius: 6px; border: 1px solid var(--border-glass); background: rgba(0,0,0,0.1); color: var(--text-primary); font-family: inherit;"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="nm-submit-btn">Save Note</button>
+                </div>
+            </form>
+        </div>
+    </div>
         </div>
     </div>
 

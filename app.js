@@ -44,6 +44,7 @@ const state = {
     productSales: [],
     attendance: [],        // today's attendance records keyed by workerId
     appointments: [],
+    notes: [],
     dateFilter: 'today',  // 'today', '7d', '30d', 'all', 'custom'
     customStart: null,
     customEnd: null
@@ -457,6 +458,33 @@ const apiService = {
             console.error('Failed to complete appointment:', e);
             throw e;
         }
+    },
+    async getNotes() {
+        const res = await fetch(`${API_URL}/notes/`, { headers: this.authHeaders() });
+        return await res.json();
+    },
+    async addNote(note) {
+        const res = await fetch(`${API_URL}/notes/`, {
+            method: 'POST',
+            headers: this.authHeaders(),
+            body: JSON.stringify(note)
+        });
+        return await res.json();
+    },
+    async updateNote(id, note) {
+        const res = await fetch(`${API_URL}/notes/${id}/`, {
+            method: 'PATCH',
+            headers: this.authHeaders(),
+            body: JSON.stringify(note)
+        });
+        return await res.json();
+    },
+    async deleteNote(id) {
+        const res = await fetch(`${API_URL}/notes/${id}/`, {
+            method: 'DELETE',
+            headers: this.authHeaders()
+        });
+        return res.ok;
     }
 };
 
@@ -661,6 +689,20 @@ const DOM = {
 
     topWorkersList: document.getElementById('top-workers-list'),
 
+    // Notes
+    notesGrid: document.getElementById('notes-grid'),
+    noteSearch: document.getElementById('note-search'),
+    btnAddNote: document.getElementById('btn-add-note'),
+    noteModal: document.getElementById('note-modal'),
+    noteForm: document.getElementById('note-form'),
+    nmId: document.getElementById('nm-id'),
+    nmName: document.getElementById('nm-name'),
+    nmPhone: document.getElementById('nm-phone'),
+    nmVillage: document.getElementById('nm-village'),
+    nmDesc: document.getElementById('nm-desc'),
+    nmTitle: document.getElementById('nm-title'),
+    nmSubmitBtn: document.getElementById('nm-submit-btn'),
+
     closeModals: document.querySelectorAll('.close-modal, .close-modal-btn')
 };
 
@@ -679,6 +721,7 @@ const app = {
         state.productSales = await apiService.getProductSales();
         state.attendance = await apiService.getAttendance();
         state.appointments = await apiService.getAppointments();
+        state.notes = await apiService.getNotes();
 
         this.renderDashboard();
         this.renderWorkers();
@@ -686,6 +729,7 @@ const app = {
         this.renderProducts();
         this.renderExpenses();
         this.renderAppointments();
+        this.renderNotes();
     },
 
     setupEventListeners() {
@@ -705,6 +749,18 @@ const app = {
         if (DOM.btnEditProfile) {
             DOM.btnEditProfile.addEventListener('click', () => {
                 this.openEditProfileModal();
+            });
+        }
+
+        if (DOM.btnAddIncome) {
+            DOM.btnAddIncome.addEventListener('click', () => {
+                this.openTransactionModal('income');
+            });
+        }
+
+        if (DOM.btnAddExpense) {
+            DOM.btnAddExpense.addEventListener('click', () => {
+                this.openTransactionModal('expense');
             });
         }
 
@@ -901,8 +957,32 @@ const app = {
                 if (DOM.metricHistoryModal) DOM.metricHistoryModal.classList.remove('show');
                 if (DOM.appointmentModal) DOM.appointmentModal.classList.remove('show');
                 if (DOM.rescheduleModal) DOM.rescheduleModal.classList.remove('show');
+                if (DOM.noteModal) DOM.noteModal.classList.remove('show');
             });
         });
+
+        // Notes Events
+        if (DOM.btnAddNote) {
+            DOM.btnAddNote.addEventListener('click', () => {
+                if (DOM.noteForm) DOM.noteForm.reset();
+                if (DOM.nmId) DOM.nmId.value = '';
+                if (DOM.nmTitle) DOM.nmTitle.textContent = 'Add Note';
+                if (DOM.noteModal) DOM.noteModal.classList.add('show');
+            });
+        }
+
+        if (DOM.noteForm) {
+            DOM.noteForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleNoteSubmit();
+            });
+        }
+
+        if (DOM.noteSearch) {
+            DOM.noteSearch.addEventListener('input', () => {
+                this.renderNotes();
+            });
+        }
 
         // Photo Upload
         if (DOM.epPhotoUpload) {
@@ -1044,6 +1124,7 @@ const app = {
         if (viewId === 'memberships') this.renderMemberships();
         if (viewId === 'products') this.renderProducts();
         if (viewId === 'expenses') this.renderExpenses();
+        if (viewId === 'notes') this.renderNotes();
     },
 
     setupGlobalDateFilter() {
@@ -3152,6 +3233,120 @@ const app = {
         if (confirm('Are you sure you want to logout?')) {
             localStorage.removeItem('auth_token');
             window.location.href = 'login.html';
+        }
+    },
+
+    renderNotes() {
+        if (!DOM.notesGrid) return;
+        DOM.notesGrid.innerHTML = '';
+
+        const searchTerm = DOM.noteSearch ? DOM.noteSearch.value.toLowerCase() : '';
+        const filteredNotes = state.notes.filter(n => {
+            const matchesName = n.name.toLowerCase().includes(searchTerm);
+            const matchesVillage = (n.village || '').toLowerCase().includes(searchTerm);
+            return matchesName || matchesVillage;
+        });
+
+        if (filteredNotes.length === 0) {
+            DOM.notesGrid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">${searchTerm ? 'No notes found matching your search.' : 'No notes found. Click "Add Note" to create one.'}</div>`;
+            return;
+        }
+
+        filteredNotes.forEach(note => {
+            const card = document.createElement('div');
+            card.className = 'worker-card';
+            card.innerHTML = `
+                <div class="worker-card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <div class="avatar" style="background: var(--gradient-primary); color: white;">
+                            <i class="fa-solid fa-note-sticky"></i>
+                        </div>
+                        <div class="info">
+                            <h3 style="margin-bottom: 4px;">${note.name}</h3>
+                            <p style="font-size: 0.85rem;"><i class="fa-solid fa-phone" style="margin-right: 4px;"></i> ${note.phone_number || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-icon btn-edit-note" title="Edit Note" style="color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 4px;">
+                            <i class="fa-solid fa-pen-to-square hover-primary" style="transition: color 0.2s;"></i>
+                        </button>
+                        <button class="btn-icon btn-delete-note" title="Delete Note" style="color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 4px;">
+                            <i class="fa-solid fa-trash hover-red" style="transition: color 0.2s;"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="padding: 16px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-muted); font-size: 0.85rem;">Village</span>
+                        <span style="font-weight: 500;">${note.village || 'N/A'}</span>
+                    </div>
+                    <div style="margin-top:12px; border-top: 1px solid var(--border-glass); padding-top: 12px;">
+                        <div style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 4px;">Description:</div>
+                        <div style="font-size: 0.95rem; line-height: 1.5; color: var(--text-primary); white-space: pre-line;">${note.description}</div>
+                    </div>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-align: right;">
+                    <i class="fa-solid fa-clock"></i> ${new Date(note.timestamp).toLocaleString()}
+                </div>
+            `;
+
+            card.querySelector('.btn-edit-note').addEventListener('click', () => {
+                DOM.nmId.value = note.id;
+                DOM.nmName.value = note.name;
+                DOM.nmPhone.value = note.phone_number || '';
+                DOM.nmVillage.value = note.village || '';
+                DOM.nmDesc.value = note.description;
+                DOM.nmTitle.textContent = 'Edit Note';
+                DOM.noteModal.classList.add('show');
+            });
+
+            card.querySelector('.btn-delete-note').addEventListener('click', async () => {
+                if (confirm(`Are you sure you want to delete the note for ${note.name}?`)) {
+                    try {
+                        await apiService.deleteNote(note.id);
+                        state.notes = state.notes.filter(n => n.id !== note.id);
+                        this.renderNotes();
+                        this.showToast('Note deleted successfully', 'success');
+                    } catch (err) {
+                        this.showToast('Failed to delete note', 'error');
+                    }
+                }
+            });
+
+            DOM.notesGrid.appendChild(card);
+        });
+    },
+
+    async handleNoteSubmit() {
+        const id = DOM.nmId.value;
+        const noteData = {
+            name: DOM.nmName.value.trim(),
+            phone_number: DOM.nmPhone.value.trim(),
+            village: DOM.nmVillage.value.trim(),
+            description: DOM.nmDesc.value.trim()
+        };
+
+        if (!noteData.name || !noteData.description) {
+            this.showToast('Please fill all required fields.', 'error');
+            return;
+        }
+
+        try {
+            if (id) {
+                const updatedNote = await apiService.updateNote(id, noteData);
+                const idx = state.notes.findIndex(n => n.id === parseInt(id));
+                if (idx > -1) state.notes[idx] = updatedNote;
+                this.showToast('Note updated successfully', 'success');
+            } else {
+                const newNote = await apiService.addNote(noteData);
+                state.notes.push(newNote);
+                this.showToast('Note added successfully', 'success');
+            }
+
+            DOM.noteModal.classList.remove('show');
+            this.renderNotes();
+        } catch (err) {
+            this.showToast('Failed to save note', 'error');
         }
     }
 };
