@@ -1,122 +1,147 @@
-# Saloon Website Deployment Guide
+# Saloon Website Deployment Guide (Production)
 
-This guide covers everything you need to completely replace your old website on your VPS, deploy your new Django + HTML/JS website, and create your Admin username and password for login!
+This guide provides step-by-step instructions to deploy your SaloonFlow application (Django Backend + HTML/JS Frontend) to a production server (VPS).
 
-## Phase 1: Committing Your Local Changes
-
-Before we touch the server, I have already updated `login.js`, `app.js`, and `settings.py` on your Mac so that they point to your custom domain (`http://hrinfinity.fastcopies.in`). 
-
-You need to push these changes to your GitHub repository so your server can download them.
-
-1. Open your Mac Terminal.
-2. Go to your project folder:
-   ```bash
-   cd "/Users/saitejakaki/Desktop/saloon website"
-   ```
-3. Commit and push the updates:
-   ```bash
-   git add .
-   git commit -m "Update API URLs to custom domain for production"
-   git push origin main
-   ```
+## Prerequisites
+- A Linux VPS (Ubuntu 20.04/22.04 recommended)
+- Your domain: `hrinfinity.fastcopies.in`
+- GitHub repository with the latest code
 
 ---
 
-## Phase 2: Pulling or Cloning the Code on the Server
+## Step 1: Prepare the Server
+Update packages and install necessary dependencies:
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install python3-pip python3-venv nginx git -y
+```
 
-Now, let's get the code onto your server.
+## Step 2: Clone/Pull the Code
+Clone your project to `/var/www/` or pull latest changes:
+```bash
+cd /var/www
+# If first time:
+sudo git clone https://github.com/saiteja143-kaki/saloon-project.git saloon
+sudo chown -R $USER:$USER /var/www/saloon
+cd /var/www/saloon
+# If already exists:
+cd /var/www/saloon
+git pull origin main
+```
 
-1. Log into your VPS via Termius SSH.
-2. Go to the web folder:
-   ```bash
-   cd /var/www
-   ```
-
-3. **Check if your code is already there:**
-   If the `saloon` folder already exists and is a git repository, you can just pull the latest changes:
-   ```bash
-   cd saloon
-   git pull origin main
-   ```
-
-   **OR, if this is the first time:**
-   If the `saloon` folder does *not* exist yet, clone it freshly:
-   ```bash
-   git clone https://github.com/saiteja143-kaki/saloon-project.git saloon
-   cd saloon
-   ```
-   *(Note: If your GitHub repository is private, it will ask for your GitHub username and a Personal Access Token as the password).*
-
-
-
----
-
-## Phase 3: Setting Up the Django Backend
-
-Once your new files are sitting inside `/var/www/saloon`, do the following in your Termius SSH terminal:
-
-1. Go to your backend folder:
+## Step 3: Setup Backend (Django)
+1. **Create/Activate Virtual Environment**:
    ```bash
    cd /var/www/saloon/backend
-   ```
-2. Create and activate a Python virtual environment:
-   ```bash
-   sudo apt update
-   sudo apt install python3-venv python3-pip -y
    python3 -m venv venv
    source venv/bin/activate
    ```
-3. Install the required Python packages:
+2. **Install Requirements**:
    ```bash
    pip install -r requirements.txt
+   pip install gunicorn
    ```
-4. Set up your Database (SQLite):
+3. **Database Migrations** (Includes the new Notes feature):
    ```bash
    python manage.py makemigrations
    python manage.py migrate
    ```
-
----
-
-## Phase 4: Creating Your Login Username & Password
-
-This is where you create the admin account to log into the dashboard!
-
-1. Make sure you are still inside `/var/www/saloon/backend` with the virtual environment activated (`(venv)` should be visible in your terminal prompt).
-2. Run this command to create your superuser:
+4. **Create Admin User** (If not already done):
    ```bash
    python manage.py createsuperuser
    ```
-3. The terminal will ask you for:
-   - **Username**: Type your desired username (e.g., `admin`) and press Enter.
-   - **Email address**: You can leave this blank and just press Enter.
-   - **Password**: Type your desired password. *(Note: you won't see the letters as you type, this is normal for security)*
-   - **Password (again)**: Retype it to confirm.
-   
-Congratulations! You now have a working username and password for your `login.html` page.
 
----
+## Step 4: Configure Nginx
+Nginx will serve your frontend files and proxy API requests to Django.
 
-## Phase 5: Starting the Server Process
-
-You need the backend running constantly so your web app can work. 
-
-1. Start the Django server in the background using `nohup` so it stays running even when you close Termius:
+1. **Create Nginx Configuration**:
    ```bash
-   nohup python manage.py runserver 0.0.0.0:8000 &
+   sudo nano /etc/nginx/sites-available/saloon
    ```
-2. Press `Enter` one more time after you run that command to get your prompt back.
+2. **Add the following config**:
+   ```nginx
+   server {
+       listen 80;
+       server_name hrinfinity.fastcopies.in;
 
-*(Note: In a true production environment, it is better to set up **Gunicorn** and **Nginx** instead of `runserver`. If you'd like me to set up a professional Gunicorn background service later, just let me know!)*
+       root /var/www/saloon;
+       index index.html;
+
+       location / {
+           try_files $uri $uri/ /index.html;
+       }
+
+       location /api/ {
+           proxy_pass http://127.0.0.1:8000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+
+       location /admin/ {
+           proxy_pass http://127.0.0.1:8000;
+           proxy_set_header Host $host;
+       }
+
+       location /static/ {
+           alias /var/www/saloon/backend/static/;
+       }
+   }
+   ```
+3. **Enable Site and Restart Nginx**:
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/saloon /etc/nginx/sites-enabled/
+   sudo nginx -t
+   sudo systemctl restart nginx
+   ```
+
+## Step 5: Run Backend with Systemd
+To keep the backend running reliably in the background:
+
+1. **Create Service File**:
+   ```bash
+   sudo nano /etc/systemd/system/saloon-backend.service
+   ```
+2. **Add the following**:
+   ```ini
+   [Unit]
+   Description=SaloonFlow Backend Gunicorn Service
+   After=network.target
+
+   [Service]
+   User=saiteja
+   Group=www-data
+   WorkingDirectory=/var/www/saloon/backend
+   ExecStart=/var/www/saloon/backend/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 core.wsgi:application
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+3. **Start and Enable Service**:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl start saloon-backend
+   sudo systemctl enable saloon-backend
+   ```
+
+## Step 6: Collect Static Files
+```bash
+cd /var/www/saloon/backend
+source venv/bin/activate
+python manage.py collectstatic --noinput
+```
+
+## Step 7: Secure with SSL (HTTPS)
+```bash
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d hrinfinity.fastcopies.in
+```
 
 ---
 
-## Phase 6: Ensure Nginx/Apache is Serving Your Site
-
-Your server needs to know where your `index.html` lives so people can visit your IP address in the browser.
-If you already had a website, your Nginx or Apache config is likely already pointing to `/var/www/saloon`.
-
-If so, you should now be able to go to:
-**http://hrinfinity.fastcopies.in**
-
-You will see your new website, click the login button, and use the superuser account you just created!
+## Important Checklist
+- [ ] **DEBUG = False**: Ensure `DEBUG = False` in `backend/core/settings.py` for production.
+- [ ] **ALLOWED_HOSTS**: Ensure your domain is listed.
+- [ ] **Migrations**: Always run `python manage.py migrate` after pulling new code.
+- [ ] **Collect Static**: Essential for admin panel items to show correctly.

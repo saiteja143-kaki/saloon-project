@@ -87,6 +87,7 @@ class Attendance(models.Model):
     date      = models.DateField(default=timezone.localdate)
     check_in  = models.TimeField(null=True, blank=True)
     check_out = models.TimeField(null=True, blank=True)
+    status    = models.CharField(max_length=20, choices=[('present', 'Present'), ('leave', 'Leave/Holiday')], default='present')
 
     class Meta:
         unique_together = ('worker', 'date')   # one record per worker per day

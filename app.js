@@ -338,6 +338,15 @@ const apiService = {
         if (!res.ok) throw new Error('Check-out failed');
         return await res.json();
     },
+    async markLeave(workerId) {
+        const res = await fetch(`${API_URL}/attendance/mark-leave/`, {
+            method: 'POST',
+            headers: this.authHeaders(),
+            body: JSON.stringify({ workerId })
+        });
+        if (!res.ok) throw new Error('Mark leave failed');
+        return await res.json();
+    },
     async getAppointments() {
         try {
             const res = await fetch(`${API_URL}/appointments/`, { headers: this.authHeaders() });
@@ -507,6 +516,11 @@ const to12Hour = (timeStr) => {
     const hour = h % 12 || 12;
     return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
 };
+const formatBackendDate = (dateStr) => {
+    if (!dateStr) return '-';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
 // Selectors
 const DOM = {
@@ -675,6 +689,8 @@ const DOM = {
     appointmentSearch: document.getElementById('appointment-search'),
     appointmentModal: document.getElementById('appointment-modal'),
     appointmentForm: document.getElementById('appointment-form'),
+    apmTitle: document.getElementById('apm-title'),
+    apId: document.getElementById('ap-id'),
     apName: document.getElementById('ap-name'),
     apPhone: document.getElementById('ap-phone'),
     apDesc: document.getElementById('ap-desc'),
@@ -707,6 +723,17 @@ const DOM = {
 };
 
 const app = {
+    isWorkerAvailable(workerId) {
+        const worker = state.workers.find(w => w.id === workerId);
+        if (!worker || worker.is_blocked) return false;
+
+        // Check if on leave today
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const att = state.attendance.find(a => a.workerId === workerId && a.date === todayStr);
+        if (att && att.status === 'leave') return false;
+
+        return true;
+    },
     async init() {
         this.setupEventListeners();
         this.setDate();
@@ -945,19 +972,16 @@ const app = {
         // Modals Close button handler addition
         DOM.closeModals.forEach(btn => {
             btn.addEventListener('click', () => {
-                DOM.workerModal.classList.remove('show');
-                DOM.transactionModal.classList.remove('show');
-                DOM.editProfileModal.classList.remove('show');
-                DOM.membershipModal.classList.remove('show');
-                if (DOM.membershipDetailModal) DOM.membershipDetailModal.classList.remove('show');
-                if (DOM.addRecordModal) DOM.addRecordModal.classList.remove('show');
-                if (DOM.productModal) DOM.productModal.classList.remove('show');
-                if (DOM.sellProductModal) DOM.sellProductModal.classList.remove('show');
-                if (DOM.restockProductModal) DOM.restockProductModal.classList.remove('show');
-                if (DOM.metricHistoryModal) DOM.metricHistoryModal.classList.remove('show');
-                if (DOM.appointmentModal) DOM.appointmentModal.classList.remove('show');
-                if (DOM.rescheduleModal) DOM.rescheduleModal.classList.remove('show');
-                if (DOM.noteModal) DOM.noteModal.classList.remove('show');
+                const modals = [
+                    DOM.workerModal, DOM.transactionModal, DOM.editProfileModal,
+                    DOM.membershipModal, DOM.membershipDetailModal, DOM.addRecordModal,
+                    DOM.productModal, DOM.sellProductModal, DOM.restockProductModal,
+                    DOM.metricHistoryModal, DOM.appointmentModal, DOM.rescheduleModal,
+                    DOM.noteModal, DOM.shopExpenseModal, DOM.resignModal, DOM.settlementModal
+                ];
+                modals.forEach(m => {
+                    if (m && m.classList) m.classList.remove('show');
+                });
             });
         });
 
@@ -1668,10 +1692,13 @@ const app = {
             if (a.date === todayStr) todayAttMap[a.workerId] = a;
         });
 
-        // Sort workers: Active first, Blocked second
+        // Sort workers: Active first, Leave second, Blocked last
         const sortedWorkers = [...state.workers].sort((a, b) => {
-            if (a.is_blocked === b.is_blocked) return 0;
-            return a.is_blocked ? 1 : -1;
+            const attA = todayAttMap[a.id];
+            const attB = todayAttMap[b.id];
+            const valA = a.is_blocked ? 2 : (attA && attA.status === 'leave' ? 1 : 0);
+            const valB = b.is_blocked ? 2 : (attB && attB.status === 'leave' ? 1 : 0);
+            return valA - valB;
         });
 
         sortedWorkers.forEach(worker => {
@@ -1680,9 +1707,17 @@ const app = {
 
             // Derive status badge
             let statusBadge, attButtons;
-            if (!att || !att.check_in) {
+            if (!att || (att.status === 'present' && !att.check_in)) {
                 statusBadge = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(255,255,255,0.07);color:var(--text-muted);">⚪ Not Started</span>`;
-                attButtons = `<button class="btn btn-sm btn-att-checkin" style="flex:1;background:rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.4);color:#2ecc71;border-radius:6px;padding:7px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;" data-worker="${worker.id}"><i class="fa-solid fa-clock"></i> Check In</button>`;
+                attButtons = `
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                        <button class="btn btn-sm btn-att-checkin" style="flex:1;background:rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.4);color:#2ecc71;border-radius:6px;padding:7px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;" data-worker="${worker.id}"><i class="fa-solid fa-clock"></i> Check In</button>
+                        <button class="btn btn-sm btn-att-leave" style="flex:1;background:rgba(243,156,18,0.15);border:1px solid rgba(243,156,18,0.4);color:#f39c12;border-radius:6px;padding:7px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;" data-worker="${worker.id}"><i class="fa-solid fa-umbrella-beach"></i> Mark Leave</button>
+                    </div>
+                `;
+            } else if (att.status === 'leave') {
+                statusBadge = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(243,156,18,0.15);color:#f39c12;">🏖️ On Leave</span>`;
+                attButtons = `<button class="btn btn-sm btn-att-checkin" style="flex:1;background:rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.4);color:#2ecc71;border-radius:6px;padding:7px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;" data-worker="${worker.id}"><i class="fa-solid fa-clock"></i> Revert & Check In</button>`;
             } else if (att.check_in && !att.check_out) {
                 statusBadge = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(46,204,113,0.15);color:#2ecc71;">🟢 In since ${to12Hour(att.check_in)}</span>`;
                 attButtons = `<button class="btn btn-sm btn-att-checkout" style="flex:1;background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;border-radius:6px;padding:7px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;" data-worker="${worker.id}" data-attid="${att.id}"><i class="fa-solid fa-clock"></i> Check Out</button>`;
@@ -1750,6 +1785,7 @@ const app = {
                 if (!e.target.closest('.btn-add-income-card') &&
                     !e.target.closest('.btn-add-expense-card') &&
                     !e.target.closest('.btn-att-checkin') &&
+                    !e.target.closest('.btn-att-leave') &&
                     !e.target.closest('.btn-att-checkout') &&
                     !e.target.closest('.btn-rejoin-worker')) {
                     this.openWorkerModal(worker.id);
@@ -1779,6 +1815,14 @@ const app = {
                 checkinBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     await this.handleCheckIn(worker.id);
+                });
+            }
+
+            const leaveBtn = card.querySelector('.btn-att-leave');
+            if (leaveBtn) {
+                leaveBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await this.handleMarkLeave(worker.id);
                 });
             }
 
@@ -1838,6 +1882,23 @@ const app = {
         }
     },
 
+    async handleMarkLeave(workerId) {
+        try {
+            const record = await apiService.markLeave(workerId);
+            const idx = state.attendance.findIndex(a => a.id === record.id);
+            if (idx !== -1) {
+                state.attendance[idx] = record;
+            } else {
+                state.attendance.push(record);
+            }
+            this.renderWorkers();
+            this.showToast('Worker marked as on leave', 'success');
+        } catch (error) {
+            console.error(error);
+            this.showToast('Failed to mark leave', 'error');
+        }
+    },
+
     renderWorkerAttendance(workerId) {
         const container = document.getElementById('wm-attendance-body');
         if (!container) return;
@@ -1847,7 +1908,7 @@ const app = {
             .sort((a, b) => b.date.localeCompare(a.date));
 
         if (records.length === 0) {
-            container.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted);">No attendance records yet.</td></tr>`;
+            container.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted);">No attendance records yet.</td></tr>`;
             return;
         }
 
@@ -1859,13 +1920,14 @@ const app = {
                 const mins = (oh * 60 + om) - (ih * 60 + im);
                 if (mins > 0) hoursWorked = `${Math.floor(mins / 60)}h ${mins % 60}m`;
             }
-            const statusColor = (!a.check_in) ? 'var(--text-muted)' : (!a.check_out) ? '#2ecc71' : 'var(--primary)';
-            const statusLabel = (!a.check_in) ? 'Absent' : (!a.check_out) ? 'Active' : 'Complete';
+            const statusColor = (a.status === 'leave') ? '#f39c12' : (!a.check_in) ? 'var(--text-muted)' : (!a.check_out) ? '#2ecc71' : 'var(--primary)';
+            const statusLabel = (a.status === 'leave') ? 'Leave' : (!a.check_in) ? 'Absent' : (!a.check_out) ? 'Active' : 'Complete';
+
             return `<tr>
-                <td style="font-weight:500;">${a.date}</td>
-                <td style="color:#2ecc71;">${to12Hour(a.check_in)}</td>
-                <td style="color:#e74c3c;">${to12Hour(a.check_out)}</td>
-                <td>${hoursWorked}</td>
+                <td style="font-weight:500;">${formatBackendDate(a.date)}</td>
+                <td style="color:#2ecc71;">${a.status === 'leave' ? '-' : to12Hour(a.check_in)}</td>
+                <td style="color:#e74c3c;">${a.status === 'leave' ? '-' : to12Hour(a.check_out)}</td>
+                <td>${a.status === 'leave' ? '-' : hoursWorked}</td>
                 <td><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}22;">${statusLabel}</span></td>
             </tr>`;
         }).join('');
@@ -1996,7 +2058,7 @@ const app = {
                 if (DOM.rmWorker) {
                     DOM.rmWorker.innerHTML = '<option value="">-- Select Worker --</option>';
                     state.workers.forEach(w => {
-                        if (!w.is_blocked) {
+                        if (this.isWorkerAvailable(w.id)) {
                             DOM.rmWorker.innerHTML += `<option value="${w.id}">${w.name}</option>`;
                         }
                     });
@@ -2768,14 +2830,8 @@ const app = {
                         <button class="btn btn-sm btn-success btn-settle-we" data-id="${worker.id}">Settle Payment</button>
                     </div>
                     
-                    <!-- Hidden Expense Log Mini-Table -->
-                    <div class="we-log-container" id="we-log-${worker.id}" style="display: none; margin-top: 12px; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.1); border-radius: 6px; padding: 8px;">
-                        <table class="table" style="font-size: 0.85rem;">
-                            <tbody>
-                                <!-- Populated dynamically when clicked -->
-                            </tbody>
-                        </table>
-                    </div>
+                    <!-- Hidden Expense Log -->
+                    <div class="we-log-container" id="we-log-${worker.id}" style="display: none; margin-top: 12px; max-height: 400px; overflow-y: auto; background: transparent; border-radius: 6px; padding: 0;"></div>
                 `;
 
                 // Real-time calculation logic
@@ -2790,36 +2846,80 @@ const app = {
                 // Toggle Expense Log
                 const btnViewLog = wCard.querySelector('.btn-view-we');
                 const logContainer = wCard.querySelector(`#we-log-${worker.id}`);
-                const logTbody = logContainer.querySelector('tbody');
 
                 btnViewLog.addEventListener('click', () => {
                     const isHidden = logContainer.style.display === 'none';
                     if (isHidden) {
-                        const workerTxs = state.transactions
-                            .filter(t => {
-                                const tTime = new Date(t.timestamp).getTime();
-                                return t.workerId === worker.id &&
-                                    t.type === 'expense' &&
-                                    !t.desc.startsWith('Monthly Salary Settlement') &&
-                                    tTime > cutoffTime;
-                            })
+                        // 1. Get ALL transactions for this worker
+                        const allWorkerTxs = state.transactions
+                            .filter(t => t.workerId === worker.id && (t.type === 'expense' || t.desc.startsWith('Monthly Salary Settlement')))
                             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-                        if (workerTxs.length === 0) {
-                            logTbody.innerHTML = '<tr><td style="text-align:center; color: var(--text-muted);">No expenses logged.</td></tr>';
+                        if (allWorkerTxs.length === 0) {
+                            logContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 20px;">No historical records found.</div>';
                         } else {
-                            logTbody.innerHTML = workerTxs.map(t => `
-                                <tr>
-                                    <td>${t.timestamp.toLocaleDateString()}</td>
-                                    <td>${t.desc}</td>
-                                    <td style="text-align: right; color: var(--text-red);">-₹${t.amount}</td>
-                                    <td style="text-align: right;">
-                                        <button class="btn btn-sm btn-outline text-red" onclick="app.deleteRecord('transaction', ${t.id})" title="Delete Expense">
-                                            <i class="fa-solid fa-trash-can" style="font-size: 0.75rem;"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            `).join('');
+                            // 2. Group by Settlement Period (txs sorted newest-first)
+                            const periods = [];
+                            let currentPeriod = { isSettled: false, txs: [], settlement: null };
+
+                            allWorkerTxs.forEach(t => {
+                                if (t.desc.startsWith('Monthly Salary Settlement')) {
+                                    // Expenses collected so far are from AFTER this settlement (active/newer cycle)
+                                    if (currentPeriod.txs.length > 0 || periods.length === 0) {
+                                        periods.push(currentPeriod);
+                                    }
+                                    // Start a NEW period for this settlement's cycle (will collect older expenses)
+                                    currentPeriod = { isSettled: true, txs: [], settlement: t };
+                                } else {
+                                    currentPeriod.txs.push(t);
+                                }
+                            });
+                            // Push the last period (oldest cycle)
+                            if (currentPeriod.txs.length > 0 || currentPeriod.isSettled) {
+                                periods.push(currentPeriod);
+                            }
+
+                            // 3. Render Rectangular Boxes
+                            logContainer.innerHTML = periods.map((p) => {
+                                const periodTitle = p.isSettled
+                                    ? `Settled Cycle (${new Date(p.settlement.timestamp).toLocaleDateString()})`
+                                    : `Active Cycle`;
+
+                                const borderColor = p.isSettled ? '#6c5ce7' : '#ffa500';
+                                const headerBg = p.isSettled ? 'rgba(108,92,231,0.15)' : 'rgba(255,165,0,0.12)';
+                                const headerColor = p.isSettled ? '#a29bfe' : '#ffa500';
+
+                                const expenseRows = p.txs.map(t => `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 14px; border-bottom: 1px solid rgba(255,255,255,0.04);">
+                                        <span style="width: 90px; flex-shrink: 0; color: var(--text-muted); font-size: 0.8rem;">${new Date(t.timestamp).toLocaleDateString()}</span>
+                                        <span style="flex: 1; padding: 0 10px; font-size: 0.85rem;">${t.desc}</span>
+                                        <span style="flex-shrink: 0; color: var(--text-red); font-weight: 600; font-size: 0.85rem;">-₹${t.amount}</span>
+                                        ${!p.isSettled ? `<button class="btn btn-sm btn-outline text-red" style="margin-left: 8px; padding: 2px 6px;" onclick="app.deleteRecord('transaction', ${t.id})" title="Delete"><i class="fa-solid fa-trash-can" style="font-size: 0.65rem;"></i></button>` : ''}
+                                    </div>
+                                `).join('');
+
+                                // Settlement row goes INSIDE the list as the last entry
+                                const settlementRow = p.isSettled ? `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: rgba(46,204,113,0.12); border-top: 2px solid rgba(46,204,113,0.3);">
+                                        <span style="width: 90px; flex-shrink: 0; color: #2ecc71; font-size: 0.8rem; font-weight: 600;">${new Date(p.settlement.timestamp).toLocaleDateString()}</span>
+                                        <span style="flex: 1; padding: 0 10px; font-size: 0.85rem; font-weight: 600; color: #2ecc71;"><i class="fa-solid fa-circle-check"></i> Settlement Paid</span>
+                                        <span style="flex-shrink: 0; color: #2ecc71; font-weight: 700; font-size: 0.95rem;">+₹${p.settlement.amount}</span>
+                                    </div>
+                                ` : '';
+
+                                return `
+                                    <div style="width: 100%; border: 2px solid ${borderColor}; border-radius: 10px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.15);">
+                                        <div style="padding: 10px 14px; background: ${headerBg}; font-weight: 700; font-size: 0.9rem; color: ${headerColor}; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid ${borderColor};">
+                                            <i class="fa-solid ${p.isSettled ? 'fa-box-archive' : 'fa-clock-rotate-left'}"></i>
+                                            <span>${periodTitle}</span>
+                                        </div>
+                                        <div style="max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.08);">
+                                            ${p.txs.length === 0 && !p.isSettled ? '<div style="text-align:center; padding: 20px; color: var(--text-muted);">No expenses yet.</div>' : expenseRows}
+                                            ${settlementRow}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
                         }
                         logContainer.style.display = 'block';
                         btnViewLog.textContent = 'Hide Expense Log';
@@ -3069,6 +3169,7 @@ const app = {
                             <p style="font-size: 0.85rem;"><i class="fa-solid fa-phone" style="margin-right: 4px;"></i> ${ap.client_phone || 'N/A'}</p>
                         </div>
                     </div>
+                    ${!isCompleted ? `<button class="btn btn-sm btn-outline" onclick="app.editAppointment(${ap.id})" title="Edit Appointment"><i class="fa-solid fa-pen"></i></button>` : ''}
                 </div>
                 <div style="padding: 16px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 16px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
@@ -3113,6 +3214,8 @@ const app = {
     openAppointmentModal() {
         if (!DOM.appointmentModal) return;
         DOM.appointmentForm.reset();
+        if (DOM.apId) DOM.apId.value = '';
+        if (DOM.apmTitle) DOM.apmTitle.innerText = 'Add Appointment';
 
         // Default date/time to now
         const now = new Date();
@@ -3124,13 +3227,60 @@ const app = {
         if (DOM.apWorker) {
             DOM.apWorker.innerHTML = '<option value="">-- Select Worker (Optional) --</option>';
             state.workers
-                .filter(w => !w.is_blocked) // Exclude blocked workers
+                .filter(w => this.isWorkerAvailable(w.id)) // Exclude blocked/leave workers
                 .forEach(w => {
                     const opt = document.createElement('option');
                     opt.value = w.id;
                     opt.textContent = w.name;
                     DOM.apWorker.appendChild(opt);
                 });
+        }
+
+        DOM.appointmentModal.classList.add('show');
+    },
+
+    editAppointment(id) {
+        const ap = state.appointments.find(a => a.id === id);
+        if (!ap || !DOM.appointmentModal) return;
+
+        DOM.appointmentForm.reset();
+
+        if (DOM.apId) DOM.apId.value = ap.id;
+        if (DOM.apmTitle) DOM.apmTitle.innerText = 'Edit Appointment';
+
+        if (DOM.apName) DOM.apName.value = ap.client_name || '';
+        if (DOM.apPhone) DOM.apPhone.value = ap.client_phone || '';
+        if (DOM.apDesc) DOM.apDesc.value = ap.description || '';
+        if (DOM.apAmount) DOM.apAmount.value = ap.amount || '';
+
+        // Formatted Date
+        if (ap.appointment_date && DOM.apDate) {
+            const dateObj = new Date(ap.appointment_date);
+            const localOffset = dateObj.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(dateObj - localOffset)).toISOString().slice(0, 16);
+            DOM.apDate.value = localISOTime;
+        }
+
+        // Worker
+        if (DOM.apWorker) {
+            DOM.apWorker.innerHTML = '<option value="">-- Select Worker (Optional) --</option>';
+            state.workers.filter(w => this.isWorkerAvailable(w.id) || w.id === ap.assigned_worker).forEach(w => {
+                const opt = document.createElement('option');
+                opt.value = w.id;
+                opt.textContent = w.name;
+                DOM.apWorker.appendChild(opt);
+            });
+            if (ap.assigned_worker) {
+                DOM.apWorker.value = ap.assigned_worker;
+            } else {
+                DOM.apWorker.value = '';
+            }
+        }
+
+        // Payment Mode
+        if (ap.payment_mode) {
+            const modeInput = document.querySelector(`input[name="ap-payment-method"][value="${ap.payment_mode}"]`);
+            if (modeInput) modeInput.checked = true;
         }
 
         DOM.appointmentModal.classList.add('show');
@@ -3153,12 +3303,24 @@ const app = {
                 data.assignedWorkerId = parseInt(DOM.apWorker.value);
             }
 
-            const newAp = await apiService.addAppointment(data);
-            state.appointments.push(newAp);
+            if (DOM.apId && DOM.apId.value) {
+                // Edit Mode
+                const id = parseInt(DOM.apId.value);
+                const updatedAp = await apiService.updateAppointment(id, data);
+                const idx = state.appointments.findIndex(a => a.id === id);
+                if (idx !== -1) {
+                    state.appointments[idx] = updatedAp;
+                }
+                this.showToast('Appointment updated successfully!', 'success');
+            } else {
+                // Add Mode
+                const newAp = await apiService.addAppointment(data);
+                state.appointments.push(newAp);
+                this.showToast('Appointment added successfully!', 'success');
+            }
 
             this.renderAppointments();
             DOM.appointmentModal.classList.remove('show');
-            this.showToast('Appointment added!', 'success');
         } catch (error) {
             console.error(error);
             this.showToast('Failed to add appointment', 'error');

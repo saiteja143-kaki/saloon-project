@@ -743,9 +743,10 @@
     <div class="modal" id="appointment-modal">
         <div class="modal-content mini-modal">
             <span class="close-modal">&times;</span>
-            <h2>Add Appointment</h2>
+            <h2 id="apm-title">Add Appointment</h2>
 
             <form id="appointment-form">
+                <input type="hidden" id="ap-id">
                 <div class="form-group">
                     <label for="ap-name">Client Name *</label>
                     <input type="text" id="ap-name" required placeholder="e.g. John Doe">

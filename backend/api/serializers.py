@@ -113,7 +113,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Attendance
-        fields = ['id', 'workerId', 'date', 'check_in', 'check_out']
+        fields = ['id', 'workerId', 'date', 'check_in', 'check_out', 'status']
 
     def create(self, validated_data):
         worker_id = validated_data.pop('worker')['id']
@@ -145,6 +145,19 @@ class AppointmentSerializer(serializers.ModelSerializer):
             worker = Worker.objects.get(id=worker_data['id'])
         appointment = Appointment.objects.create(assigned_worker=worker, **validated_data)
         return appointment
+
+    def update(self, instance, validated_data):
+        if 'assigned_worker' in validated_data:
+            worker_data = validated_data.pop('assigned_worker')
+            worker = None
+            if worker_data and worker_data.get('id'):
+                worker = Worker.objects.get(id=worker_data['id'])
+            instance.assigned_worker = worker
+            
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 from .models import Note
 

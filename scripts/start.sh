@@ -3,8 +3,8 @@
 
 echo "Starting SalonFlow Backend (Port 8000)..."
 cd backend
-source venv/bin/activate 2>/dev/null || echo "No venv found, using system Python..."
-python manage.py runserver &
+# Use explicit venv python to avoid activation issues
+./venv/bin/python manage.py runserver &
 BACKEND_PID=$!
 
 cd ..

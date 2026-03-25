@@ -147,11 +147,15 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
         attendance, created = Attendance.objects.get_or_create(
             worker=worker, date=today,
-            defaults={'check_in': now_time}
+            defaults={'check_in': now_time, 'status': 'present'}
         )
-        if not created and attendance.check_in is None:
-            attendance.check_in = now_time
-            attendance.save()
+        if not created:
+            # If previously on leave or missing check-in, set it now
+            if attendance.status == 'leave' or attendance.check_in is None:
+                attendance.status = 'present'
+                if attendance.check_in is None:
+                    attendance.check_in = now_time
+                attendance.save()
 
         serializer = AttendanceSerializer(attendance)
         status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
@@ -164,6 +168,29 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         attendance.check_out = now_time
         attendance.save()
         return Response(AttendanceSerializer(attendance).data)
+
+    from rest_framework.decorators import action
+    @action(detail=False, methods=['post'], url_path='mark-leave')
+    def mark_leave(self, request):
+        worker_id = request.data.get('workerId')
+        if not worker_id:
+            return Response({"error": "workerId required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            worker = Worker.objects.get(id=worker_id)
+        except Worker.DoesNotExist:
+            return Response({"error": "Worker not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        today = tz.localdate()
+        attendance, created = Attendance.objects.get_or_create(
+            worker=worker, date=today,
+            defaults={'status': 'leave'}
+        )
+        if not created:
+            attendance.status = 'leave'
+            attendance.save()
+
+        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(AttendanceSerializer(attendance).data, status=status_code)
 
 from rest_framework.decorators import action
 from .models import Appointment
