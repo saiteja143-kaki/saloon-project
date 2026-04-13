@@ -527,6 +527,7 @@ const DOM = {
     navLinks: document.querySelectorAll('.nav-link'),
     views: document.querySelectorAll('.view-section'),
     currentDate: document.getElementById('current-date'),
+    loadingOverlay: document.getElementById('loading-overlay'),
 
     // Global Date Filter
     globalDateSelect: document.getElementById('global-date-select'),
@@ -741,22 +742,60 @@ const app = {
     },
 
     async loadData() {
-        state.workers = await apiService.getWorkers();
-        state.transactions = await apiService.getTransactions();
-        state.memberships = await apiService.getMemberships();
-        state.products = await apiService.getProducts();
-        state.productSales = await apiService.getProductSales();
-        state.attendance = await apiService.getAttendance();
-        state.appointments = await apiService.getAppointments();
-        state.notes = await apiService.getNotes();
+        console.log('App: Starting parallel data sync...');
+        if (DOM.loadingOverlay) DOM.loadingOverlay.classList.remove('hidden');
 
-        this.renderDashboard();
-        this.renderWorkers();
-        this.renderMemberships();
-        this.renderProducts();
-        this.renderExpenses();
-        this.renderAppointments();
-        this.renderNotes();
+        try {
+            // Fetch all data in parallel to significantly reduce total load time
+            const [
+                workers,
+                transactions,
+                memberships,
+                products,
+                productSales,
+                attendance,
+                appointments,
+                notes
+            ] = await Promise.all([
+                apiService.getWorkers(),
+                apiService.getTransactions(),
+                apiService.getMemberships(),
+                apiService.getProducts(),
+                apiService.getProductSales(),
+                apiService.getAttendance(),
+                apiService.getAppointments(),
+                apiService.getNotes()
+            ]);
+
+            // Mass assign state
+            state.workers = workers;
+            state.transactions = transactions;
+            state.memberships = memberships;
+            state.products = products;
+            state.productSales = productSales;
+            state.attendance = attendance;
+            state.appointments = appointments;
+            state.notes = notes;
+
+            console.log('App: Sync complete, rendering views...');
+            
+            this.renderDashboard();
+            this.renderWorkers();
+            this.renderMemberships();
+            this.renderProducts();
+            this.renderExpenses();
+            this.renderAppointments();
+            this.renderNotes();
+
+        } catch (error) {
+            console.error('App: Failed to sync data:', error);
+            this.showToast('Some data failed to sync. Please refresh.', 'error');
+        } finally {
+            // Hide loading overlay with a slight delay for smooth transition
+            setTimeout(() => {
+                if (DOM.loadingOverlay) DOM.loadingOverlay.classList.add('hidden');
+            }, 500);
+        }
     },
 
     setupEventListeners() {

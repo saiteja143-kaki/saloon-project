@@ -18,6 +18,13 @@
 </head>
 
 <body>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loader-content">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -99,7 +106,7 @@
                                     class="fa-solid fa-chart-pie"></i></div>
                             <div class="metric-info">
                                 <h3>Total Revenue</h3>
-                                <p class="metric-value text-primary" id="dashboard-total-revenue">₹0</p>
+                                <p class="metric-value text-primary" id="dashboard-total-revenue">--</p>
                             </div>
                         </div>
                         <button class="btn btn-sm"
@@ -115,7 +122,7 @@
                             <div class="metric-icon"><i class="fa-solid fa-wallet"></i></div>
                             <div class="metric-info">
                                 <h3>Total Net Revenue</h3>
-                                <p class="metric-value" id="dashboard-net">₹0</p>
+                                <p class="metric-value" id="dashboard-net">--</p>
 
                             </div>
                         </div>
@@ -132,7 +139,7 @@
                             <div class="metric-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
                             <div class="metric-info">
                                 <h3>Total Expenses</h3>
-                                <p class="metric-value text-red" id="dashboard-expenses">₹0</p>
+                                <p class="metric-value text-red" id="dashboard-expenses">--</p>
                             </div>
                         </div>
                         <button class="btn btn-sm"
@@ -150,7 +157,7 @@
                             <div class="metric-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
                             <div class="metric-info">
                                 <h3>Total Cash In</h3>
-                                <p class="metric-value text-green" id="dashboard-cash">₹0</p>
+                                <p class="metric-value text-green" id="dashboard-cash">--</p>
                             </div>
                         </div>
                         <button class="btn btn-sm"
@@ -166,7 +173,7 @@
                             <div class="metric-icon"><i class="fa-solid fa-mobile-screen"></i></div>
                             <div class="metric-info">
                                 <h3>Total Online In</h3>
-                                <p class="metric-value text-blue" id="dashboard-online">₹0</p>
+                                <p class="metric-value text-blue" id="dashboard-online">--</p>
                             </div>
                         </div>
                         <button class="btn btn-sm"
@@ -184,7 +191,7 @@
                                     class="fa-solid fa-box-open"></i></div>
                             <div class="metric-info">
                                 <h3>Products Revenue</h3>
-                                <p class="metric-value text-primary" id="dashboard-products-revenue">₹0</p>
+                                <p class="metric-value text-primary" id="dashboard-products-revenue">--</p>
                             </div>
                         </div>
                         <button class="btn btn-sm"
