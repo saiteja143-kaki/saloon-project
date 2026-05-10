@@ -987,3 +987,8 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
+
+/* Optimize click interactions for buttons with icons */
+.btn i {
+    pointer-events: none;
+}

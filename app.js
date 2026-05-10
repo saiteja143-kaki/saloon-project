@@ -1169,6 +1169,19 @@ const app = {
                 this.renderWorkers();
             });
         }
+
+        // Export Events - Harden with direct DOM selection
+        const btnCsv = document.getElementById('btn-download-csv');
+
+        if (btnCsv) {
+            console.log('App: Export Report button connected');
+            btnCsv.addEventListener('click', (e) => {
+                console.log('App: Export Report clicked');
+                this.exportToExcel();
+            });
+        } else {
+            console.warn('App: Export CSV button not found in DOM');
+        }
     },
 
     setDate() {
@@ -1307,6 +1320,179 @@ const app = {
 
         return { totalIncome, totalCashIn, totalOnlineIn, totalExpense, netCollected, expectedCash, productsRevenue };
     },
+
+    // ─── Export Logic ────────────────────────────────────────────────
+    exportToExcel() {
+        if (typeof XLSX === 'undefined') {
+            this.showToast('Export library not loaded. Please check your internet connection.', 'error');
+            return;
+        }
+
+        try {
+            const wb = XLSX.utils.book_new();
+
+            // 1. Transactions Sheet
+            const txData = this.prepareTransactionsData();
+            if (txData.length > 1) {
+                const wsTx = XLSX.utils.aoa_to_sheet(txData);
+                XLSX.utils.book_append_sheet(wb, wsTx, "Transactions");
+            }
+
+            // 2. Workers Sheet
+            const workerData = [
+                ['Name', 'Initials', 'Phone', 'Status', 'Blocked', 'Total Collected', 'Expenses']
+            ];
+            state.workers.forEach(w => {
+                const stats = this.getStats(w.id);
+                workerData.push([
+                    w.name,
+                    w.initials,
+                    w.phone || 'N/A',
+                    w.is_blocked ? 'Inactive' : 'Active',
+                    w.is_blocked ? 'YES' : 'NO',
+                    stats.totalIncome,
+                    stats.totalExpense
+                ]);
+            });
+            const wsWorkers = XLSX.utils.aoa_to_sheet(workerData);
+            XLSX.utils.book_append_sheet(wb, wsWorkers, "Workers");
+
+            // 3. Memberships Sheet
+            const membershipData = [
+                ['Member ID', 'Name', 'Phone', 'Village', 'Issue Date', 'Expire Date']
+            ];
+            state.memberships.forEach(m => {
+                membershipData.push([
+                    m.member_id || m.id,
+                    m.name,
+                    m.phone_number,
+                    m.village_name,
+                    m.issue_date,
+                    m.expire_date
+                ]);
+            });
+            const wsMembers = XLSX.utils.aoa_to_sheet(membershipData);
+            XLSX.utils.book_append_sheet(wb, wsMembers, "Memberships");
+
+            // 4. Products Sheet
+            const productData = [
+                ['Product Name', 'Price', 'Current Stock', 'Added Date']
+            ];
+            state.products.forEach(p => {
+                productData.push([
+                    p.name,
+                    p.price,
+                    p.stock_quantity,
+                    p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A'
+                ]);
+            });
+            const wsProducts = XLSX.utils.aoa_to_sheet(productData);
+            XLSX.utils.book_append_sheet(wb, wsProducts, "Products");
+
+            // 5. Shop Expenses Sheet
+            const expenseData = [
+                ['Date', 'Description', 'Mode', 'Amount (₹)']
+            ];
+            state.transactions
+                .filter(t => t.type === 'expense' && t.workerId === null && this.isDateInRange(new Date(t.timestamp)))
+                .forEach(t => {
+                    expenseData.push([
+                        new Date(t.timestamp).toLocaleString('en-IN'),
+                        t.desc,
+                        t.mode || 'cash',
+                        t.amount
+                    ]);
+                });
+            const wsExpenses = XLSX.utils.aoa_to_sheet(expenseData);
+            XLSX.utils.book_append_sheet(wb, wsExpenses, "Shop Expenses");
+
+            // 6. Appointments Sheet
+            const appointmentData = [
+                ['Date/Time', 'Client', 'Phone', 'Service', 'Worker', 'Amount (₹)', 'Status']
+            ];
+            state.appointments
+                .filter(ap => this.isDateInRange(new Date(ap.timestamp)))
+                .forEach(ap => {
+                    const worker = state.workers.find(w => w.id === ap.workerId);
+                    appointmentData.push([
+                        new Date(ap.timestamp).toLocaleString('en-IN'),
+                        ap.client_name,
+                        ap.phone || 'N/A',
+                        ap.service_desc,
+                        worker ? worker.name : 'Unassigned',
+                        ap.amount,
+                        ap.is_completed ? 'Completed' : 'Pending'
+                    ]);
+                });
+            const wsAppointments = XLSX.utils.aoa_to_sheet(appointmentData);
+            XLSX.utils.book_append_sheet(wb, wsAppointments, "Appointments");
+
+            // 7. Notes Sheet
+            const noteData = [
+                ['Title/Name', 'Phone', 'Village', 'Description', 'Date']
+            ];
+            state.notes.forEach(n => {
+                noteData.push([
+                    n.name,
+                    n.phone || 'N/A',
+                    n.village || 'N/A',
+                    n.description || '',
+                    n.created_at ? new Date(n.created_at).toLocaleDateString() : 'N/A'
+                ]);
+            });
+            const wsNotes = XLSX.utils.aoa_to_sheet(noteData);
+            XLSX.utils.book_append_sheet(wb, wsNotes, "Notes");
+
+            // Generate Filename
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const fileName = `SalonFlow_Full_Report_${state.dateFilter}_${dateStr}.xlsx`;
+
+            // Download
+            XLSX.writeFile(wb, fileName);
+            this.showToast('Full Excel Report Downloaded!', 'success');
+
+        } catch (error) {
+            console.error('Export Error:', error);
+            this.showToast('Failed to generate Excel report.', 'error');
+        }
+    },
+
+    prepareTransactionsData() {
+        const header = ['Date', 'Type', 'Description', 'Category', 'Mode', 'Worker', 'Amount (₹)'];
+        const dataRows = [];
+
+        // Services & worker expenses
+        state.transactions.filter(t => this.isDateInRange(new Date(t.timestamp))).forEach(t => {
+            const worker = state.workers.find(w => w.id === t.workerId);
+            dataRows.push([
+                new Date(t.timestamp).toLocaleString('en-IN'),
+                t.type.toUpperCase(),
+                t.desc,
+                t.type === 'income' ? 'Service' : 'Expense',
+                t.mode || 'N/A',
+                worker ? worker.name : 'Shop / Owner',
+                t.amount
+            ]);
+        });
+
+        // Product Sales
+        state.productSales.filter(s => this.isDateInRange(new Date(s.timestamp))).forEach(s => {
+            const product = state.products.find(p => p.id === s.productId) || { name: 'Unknown' };
+            dataRows.push([
+                new Date(s.timestamp).toLocaleString('en-IN'),
+                'INCOME',
+                `Sale: ${product.name} (x${s.quantity_sold})`,
+                'Product',
+                s.payment_method || 'cash',
+                'N/A',
+                s.sale_price
+            ]);
+        });
+
+        dataRows.sort((a, b) => new Date(b[0]) - new Date(a[0]));
+        return [header, ...dataRows];
+    },
+
 
     renderDashboard() {
         const stats = this.getStats();

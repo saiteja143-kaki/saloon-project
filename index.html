@@ -15,6 +15,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HR Infinity">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -91,6 +92,12 @@
                         <span style="color: var(--text-muted);">to</span>
                         <input type="date" id="global-date-end" class="date-filter">
                         <button class="btn btn-sm btn-primary" id="btn-apply-custom-date">Apply</button>
+                    </div>
+
+                    <div class="export-actions" style="margin-left: 12px; display: flex; gap: 8px;">
+                        <button class="btn btn-sm btn-outline" id="btn-download-csv" title="Download Full Excel Report">
+                            <i class="fa-solid fa-file-excel"></i> Download Report
+                        </button>
                     </div>
                 </div>
             </header>

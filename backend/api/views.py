@@ -8,17 +8,17 @@ class WorkerViewSet(viewsets.ModelViewSet):
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
-    queryset = Transaction.objects.all().order_by('-timestamp')
+    queryset = Transaction.objects.select_related('worker', 'membership_record', 'appointment').all().order_by('-timestamp')
     serializer_class = TransactionSerializer
 
 
 class MembershipViewSet(viewsets.ModelViewSet):
-    queryset = Membership.objects.all().order_by('-issue_date')
+    queryset = Membership.objects.prefetch_related('records', 'records__worker').all().order_by('-issue_date')
     serializer_class = MembershipSerializer
 
 
 class MembershipRecordViewSet(viewsets.ModelViewSet):
-    queryset = MembershipRecord.objects.all().order_by('-timestamp')
+    queryset = MembershipRecord.objects.select_related('membership', 'worker').all().order_by('-timestamp')
     serializer_class = MembershipRecordSerializer
 
     def get_queryset(self):
@@ -46,7 +46,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
 
 class ProductSaleViewSet(viewsets.ModelViewSet):
-    queryset = ProductSale.objects.all().order_by('-timestamp')
+    queryset = ProductSale.objects.select_related('product').all().order_by('-timestamp')
     serializer_class = ProductSaleSerializer
 
     def create(self, request, *args, **kwargs):
@@ -88,7 +88,7 @@ class ProductSaleViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 class ProductRestockViewSet(viewsets.ModelViewSet):
-    queryset = ProductRestock.objects.all().order_by('-timestamp')
+    queryset = ProductRestock.objects.select_related('product').all().order_by('-timestamp')
     serializer_class = ProductRestockSerializer
 
     def create(self, request, *args, **kwargs):
@@ -129,7 +129,7 @@ from .models import Attendance
 from .serializers import AttendanceSerializer
 
 class AttendanceViewSet(viewsets.ModelViewSet):
-    queryset = Attendance.objects.all().order_by('-date')
+    queryset = Attendance.objects.select_related('worker').all().order_by('-date')
     serializer_class = AttendanceSerializer
 
     def create(self, request, *args, **kwargs):
@@ -197,7 +197,7 @@ from .models import Appointment
 from .serializers import AppointmentSerializer
 
 class AppointmentViewSet(viewsets.ModelViewSet):
-    queryset = Appointment.objects.all().order_by('appointment_date')
+    queryset = Appointment.objects.select_related('assigned_worker').all().order_by('appointment_date')
     serializer_class = AppointmentSerializer
 
     @action(detail=True, methods=['post'])
