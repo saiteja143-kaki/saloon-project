@@ -159,9 +159,28 @@ class AppointmentSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-from .models import Note
+from .models import Note, RentTarget, EMI, BankRecord
 
 class NoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Note
         fields = ['id', 'name', 'phone_number', 'village', 'description', 'timestamp']
+
+
+class RentTargetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RentTarget
+        fields = ['id', 'month', 'year', 'target_amount', 'reopened_at']
+
+
+class EMISerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EMI
+        fields = ['id', 'name', 'frequency', 'monthly_amount', 'duration_months', 'total_amount', 'created_at']
+
+
+class BankRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BankRecord
+        fields = ['id', 'description', 'amount', 'timestamp']
+

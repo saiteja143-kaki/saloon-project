@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import WorkerViewSet, TransactionViewSet, MembershipViewSet, MembershipRecordViewSet, ProductViewSet, ProductSaleViewSet, ProductRestockViewSet, AttendanceViewSet, AppointmentViewSet, NoteViewSet
+from .views import WorkerViewSet, TransactionViewSet, MembershipViewSet, MembershipRecordViewSet, ProductViewSet, ProductSaleViewSet, ProductRestockViewSet, AttendanceViewSet, AppointmentViewSet, NoteViewSet, RentTargetViewSet, EMIViewSet, BankRecordViewSet
 
 router = DefaultRouter()
 router.register(r'workers', WorkerViewSet)
@@ -13,6 +13,9 @@ router.register(r'product-restocks', ProductRestockViewSet)
 router.register(r'attendance', AttendanceViewSet)
 router.register(r'appointments', AppointmentViewSet)
 router.register(r'notes', NoteViewSet)
+router.register(r'rent-targets', RentTargetViewSet)
+router.register(r'emis', EMIViewSet)
+router.register(r'bank-records', BankRecordViewSet)
 
 from rest_framework.authtoken.views import obtain_auth_token
 

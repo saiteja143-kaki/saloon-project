@@ -45,6 +45,9 @@ const state = {
     attendance: [],        // today's attendance records keyed by workerId
     appointments: [],
     notes: [],
+    rentTargets: [],
+    emis: [],
+    bankRecords: [],
     dateFilter: 'today',  // 'today', '7d', '30d', 'all', 'custom'
     customStart: null,
     customEnd: null
@@ -494,6 +497,60 @@ const apiService = {
             headers: this.authHeaders()
         });
         return res.ok;
+    },
+    async getRentTargets() {
+        const res = await fetch(`${API_URL}/rent-targets/`, { headers: this.authHeaders() });
+        return await res.json();
+    },
+    async saveRentTarget(target) {
+        const method = target.id ? 'PUT' : 'POST';
+        const url = target.id ? `${API_URL}/rent-targets/${target.id}/` : `${API_URL}/rent-targets/`;
+        const res = await fetch(url, {
+            method: method,
+            headers: this.authHeaders(),
+            body: JSON.stringify(target)
+        });
+        return await res.json();
+    },
+    async getEMIs() {
+        const res = await fetch(`${API_URL}/emis/`, { headers: this.authHeaders() });
+        return await res.json();
+    },
+    async saveEMI(emi) {
+        const method = emi.id ? 'PUT' : 'POST';
+        const url = emi.id ? `${API_URL}/emis/${emi.id}/` : `${API_URL}/emis/`;
+        const res = await fetch(url, {
+            method: method,
+            headers: this.authHeaders(),
+            body: JSON.stringify(emi)
+        });
+        return await res.json();
+    },
+    async deleteEMI(id) {
+        const res = await fetch(`${API_URL}/emis/${id}/`, {
+            method: 'DELETE',
+            headers: this.authHeaders()
+        });
+        return res;
+    },
+    async getBankRecords() {
+        const res = await fetch(`${API_URL}/bank-records/`, { headers: this.authHeaders() });
+        return await res.json();
+    },
+    async saveBankRecord(record) {
+        const res = await fetch(`${API_URL}/bank-records/`, {
+            method: 'POST',
+            headers: this.authHeaders(),
+            body: JSON.stringify(record)
+        });
+        return await res.json();
+    },
+    async deleteBankRecord(id) {
+        const res = await fetch(`${API_URL}/bank-records/${id}/`, {
+            method: 'DELETE',
+            headers: this.authHeaders()
+        });
+        return res;
     }
 };
 
@@ -720,6 +777,51 @@ const DOM = {
     nmTitle: document.getElementById('nm-title'),
     nmSubmitBtn: document.getElementById('nm-submit-btn'),
 
+    // Rent Target & Payments DOM
+    rentTargetVal: document.getElementById('rent-target-val'),
+    rentPaidPct: document.getElementById('rent-paid-pct'),
+    rentProgressBar: document.getElementById('rent-progress-bar'),
+    rentPaidVal: document.getElementById('rent-paid-val'),
+    rentPendingVal: document.getElementById('rent-pending-val'),
+    rentRecentLogs: document.getElementById('rent-recent-logs'),
+    btnEditRentTarget: document.getElementById('btn-edit-rent-target'),
+    btnAddRentPayment: document.getElementById('btn-add-rent-log'),
+    rentStatusContainer: document.getElementById('rent-status-container'),
+    rentActionsContainer: document.getElementById('rent-actions-container'),
+
+    rentTargetModal: document.getElementById('rent-target-modal'),
+    rentTargetForm: document.getElementById('rent-target-form'),
+    rtTargetAmount: document.getElementById('rt-target-amount'),
+
+    rentPaymentModal: document.getElementById('rent-payment-modal'),
+    rentPaymentForm: document.getElementById('rent-payment-form'),
+    rpAmount: document.getElementById('rp-amount'),
+    rpDate: document.getElementById('rp-date'),
+
+    // EMI Records
+    emiActiveCount: document.getElementById('emi-active-count'),
+    emiTotalContributed: document.getElementById('emi-total-contributed'),
+    emiExpectedPayout: document.getElementById('emi-expected-payout'),
+    emiRecentLogs: document.getElementById('emi-recent-logs'),
+    emiPaymentModal: document.getElementById('emi-payment-modal'),
+    emiPaymentForm: document.getElementById('emi-payment-form'),
+    epmPool: document.getElementById('epm-pool'),
+    epmAmount: document.getElementById('epm-amount'),
+    epmDate: document.getElementById('epm-date'),
+    emiRecordModal: document.getElementById('emi-record-modal'),
+    emiRecordForm: document.getElementById('emi-record-form'),
+    ermName: document.getElementById('erm-name'),
+    ermMonthlyAmount: document.getElementById('erm-monthly-amount'),
+    ermDuration: document.getElementById('erm-duration'),
+    ermTotalAmount: document.getElementById('erm-total-amount'),
+    emiHistoryModal: document.getElementById('emi-history-modal'),
+    bankEntryModal: document.getElementById('bank-entry-modal'),
+    bankMonthSelect: document.getElementById('bank-month-select'),
+    bankTotalBalance: document.getElementById('bank-total-balance'),
+    bankTotalDeposits: document.getElementById('bank-total-deposits'),
+    bankTotalWithdrawals: document.getElementById('bank-total-withdrawals'),
+    bankRecentLogs: document.getElementById('bank-recent-logs'),
+
     closeModals: document.querySelectorAll('.close-modal, .close-modal-btn')
 };
 
@@ -755,7 +857,10 @@ const app = {
                 productSales,
                 attendance,
                 appointments,
-                notes
+                notes,
+                rentTargets,
+                emis,
+                bankRecords
             ] = await Promise.all([
                 apiService.getWorkers(),
                 apiService.getTransactions(),
@@ -764,7 +869,10 @@ const app = {
                 apiService.getProductSales(),
                 apiService.getAttendance(),
                 apiService.getAppointments(),
-                apiService.getNotes()
+                apiService.getNotes(),
+                apiService.getRentTargets(),
+                apiService.getEMIs(),
+                apiService.getBankRecords()
             ]);
 
             // Mass assign state
@@ -776,6 +884,9 @@ const app = {
             state.attendance = attendance;
             state.appointments = appointments;
             state.notes = notes;
+            state.rentTargets = rentTargets;
+            state.emis = emis;
+            state.bankRecords = bankRecords;
 
             console.log('App: Sync complete, rendering views...');
             
@@ -786,6 +897,8 @@ const app = {
             this.renderExpenses();
             this.renderAppointments();
             this.renderNotes();
+            this.renderOwnerTargets();
+            this.renderBankRecords();
 
         } catch (error) {
             console.error('App: Failed to sync data:', error);
@@ -1008,20 +1121,12 @@ const app = {
             });
         }
 
-        // Modals Close button handler addition
-        DOM.closeModals.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const modals = [
-                    DOM.workerModal, DOM.transactionModal, DOM.editProfileModal,
-                    DOM.membershipModal, DOM.membershipDetailModal, DOM.addRecordModal,
-                    DOM.productModal, DOM.sellProductModal, DOM.restockProductModal,
-                    DOM.metricHistoryModal, DOM.appointmentModal, DOM.rescheduleModal,
-                    DOM.noteModal, DOM.shopExpenseModal, DOM.resignModal, DOM.settlementModal
-                ];
-                modals.forEach(m => {
-                    if (m && m.classList) m.classList.remove('show');
-                });
-            });
+        // Modals Close button handler — delegated so it catches dynamically rendered buttons too
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.close-modal, .close-modal-btn');
+            if (!btn) return;
+            const allModals = document.querySelectorAll('.modal');
+            allModals.forEach(m => m.classList.remove('show'));
         });
 
         // Notes Events
@@ -1182,6 +1287,506 @@ const app = {
         } else {
             console.warn('App: Export CSV button not found in DOM');
         }
+
+        // Owner Targets event listeners
+        const btnEditRentTarget = document.getElementById('btn-edit-rent-target');
+        if (btnEditRentTarget) {
+            btnEditRentTarget.addEventListener('click', () => {
+                const now = new Date();
+                const currentMonth = now.getMonth() + 1;
+                const currentYear = now.getFullYear();
+                const existing = state.rentTargets.find(t => t.month === currentMonth && t.year === currentYear);
+                if (DOM.rtTargetAmount) {
+                    DOM.rtTargetAmount.value = existing ? existing.target_amount : 25000;
+                }
+                if (DOM.rentTargetModal) {
+                    DOM.rentTargetModal.dataset.mode = 'edit';
+                    const modalTitle = DOM.rentTargetModal.querySelector('h2');
+                    if (modalTitle) modalTitle.textContent = "Set Monthly Rent Target";
+                    DOM.rentTargetModal.classList.add('show');
+                }
+            });
+        }
+
+        const btnAddRentLog = document.getElementById('btn-add-rent-log');
+        if (btnAddRentLog) {
+            btnAddRentLog.addEventListener('click', () => {
+                if (DOM.rentPaymentForm) DOM.rentPaymentForm.reset();
+                if (DOM.rpDate) {
+                    const today = new Date();
+                    const year = today.getFullYear();
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
+                    const day = String(today.getDate()).padStart(2, '0');
+                    DOM.rpDate.value = `${year}-${month}-${day}`;
+                }
+                if (DOM.rentPaymentModal) DOM.rentPaymentModal.classList.add('show');
+            });
+        }
+
+        if (DOM.rentTargetForm) {
+            DOM.rentTargetForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const now = new Date();
+                const month = now.getMonth() + 1;
+                const year = now.getFullYear();
+                const targetVal = parseFloat(DOM.rtTargetAmount.value);
+                const isReopen = DOM.rentTargetModal && DOM.rentTargetModal.dataset.mode === 'reopen';
+
+                if (isNaN(targetVal) || targetVal < 0) {
+                    this.showToast('Please enter a valid target amount.', 'error');
+                    return;
+                }
+
+                try {
+                    const existing = state.rentTargets.find(t => t.month === month && t.year === year);
+                    const targetData = {
+                        month: month,
+                        year: year,
+                        target_amount: targetVal
+                    };
+                    if (existing) {
+                        targetData.id = existing.id;
+                        targetData.reopened_at = isReopen ? now.toISOString() : existing.reopened_at;
+                    } else {
+                        targetData.reopened_at = isReopen ? now.toISOString() : null;
+                    }
+
+                    const savedTarget = await apiService.saveRentTarget(targetData);
+                    if (existing) {
+                        const idx = state.rentTargets.findIndex(t => t.id === existing.id);
+                        if (idx > -1) state.rentTargets[idx] = savedTarget;
+                    } else {
+                        state.rentTargets.push(savedTarget);
+                    }
+
+                    this.showToast(isReopen ? 'Rent Target reopened successfully!' : 'Rent Target updated successfully', 'success');
+                    if (DOM.rentTargetModal) DOM.rentTargetModal.classList.remove('show');
+                    this.renderOwnerTargets();
+                } catch (err) {
+                    this.showToast('Failed to save Rent Target', 'error');
+                }
+            });
+        }
+
+        if (DOM.rentPaymentForm) {
+            DOM.rentPaymentForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const amount = parseFloat(DOM.rpAmount.value);
+                const modeInput = DOM.rentPaymentForm.querySelector('input[name="rp-mode"]:checked');
+                const mode = modeInput ? modeInput.value : 'cash';
+                const dateValStr = DOM.rpDate.value;
+
+                if (isNaN(amount) || amount <= 0) {
+                    this.showToast('Please enter a valid amount.', 'error');
+                    return;
+                }
+                if (!dateValStr) {
+                    this.showToast('Please select a valid payment date.', 'error');
+                    return;
+                }
+
+                try {
+                    const today = new Date();
+                    // Force parsing as local midnight rather than UTC midnight to be timezone shift immune!
+                    const dateVal = new Date(dateValStr + 'T00:00:00');
+                    
+                    // If the selected date is today, use the exact current time so it is greater than the reopen timestamp!
+                    if (dateVal.toDateString() === today.toDateString()) {
+                        dateVal.setHours(today.getHours(), today.getMinutes(), today.getSeconds(), today.getMilliseconds());
+                    } else {
+                        // For past/future dates, set to the end of that day (23:59:59.999)
+                        dateVal.setHours(23, 59, 59, 999);
+                    }
+
+                    const monthName = dateVal.toLocaleString('en-US', { month: 'long' });
+                    const yearName = dateVal.getFullYear();
+                    const desc = `Shop Rent Payment: ${monthName} ${yearName}`;
+
+                    const txData = {
+                        type: 'expense',
+                        desc: desc,
+                        amount: amount,
+                        mode: mode,
+                        timestamp: dateVal.toISOString()
+                    };
+
+                    await apiService.addTransaction(txData);
+                    this.showToast('Rent payment logged successfully as shop expense!', 'success');
+                    if (DOM.rentPaymentModal) DOM.rentPaymentModal.classList.remove('show');
+                    
+                    // Reload all data so dashboard counters, expenses list, and Owner Targets update together!
+                    await this.loadData();
+                } catch (err) {
+                    this.showToast('Failed to log rent payment', 'error');
+                }
+            });
+        }
+
+        const btnAddEMIPayment = document.getElementById('btn-add-emi-payment');
+        if (btnAddEMIPayment) {
+            btnAddEMIPayment.addEventListener('click', () => {
+                if (DOM.emiPaymentForm) DOM.emiPaymentForm.reset();
+                
+                // Dynamically populate the select dropdown from state.emis
+                if (DOM.epmPool) {
+                    if (state.emis.length === 0) {
+                        DOM.epmPool.innerHTML = '<option value="">No active EMI records - create one first!</option>';
+                        if (DOM.epmAmount) DOM.epmAmount.value = '';
+                    } else {
+                        DOM.epmPool.innerHTML = state.emis.map(e => {
+                            const suffix = e.frequency === 'daily' ? 'day' : 'mo';
+                            return `<option value="${e.name}" data-amount="${e.monthly_amount}">${e.name} (₹${parseFloat(e.monthly_amount).toLocaleString('en-IN')}/${suffix})</option>`;
+                        }).join('');
+                        
+                        // Set initial amount to first option's amount
+                        const firstEmi = state.emis[0];
+                        if (DOM.epmAmount) DOM.epmAmount.value = firstEmi.monthly_amount;
+                    }
+                }
+
+                if (DOM.epmDate) {
+                    const today = new Date();
+                    const year = today.getFullYear();
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
+                    const day = String(today.getDate()).padStart(2, '0');
+                    DOM.epmDate.value = `${year}-${month}-${day}`;
+                }
+                
+                if (DOM.emiPaymentModal) DOM.emiPaymentModal.classList.add('show');
+            });
+        }
+
+        if (DOM.epmPool) {
+            DOM.epmPool.addEventListener('change', (e) => {
+                const selectedOption = DOM.epmPool.options[DOM.epmPool.selectedIndex];
+                if (selectedOption) {
+                    const amt = selectedOption.getAttribute('data-amount');
+                    if (DOM.epmAmount && amt) {
+                        DOM.epmAmount.value = amt;
+                    }
+                }
+            });
+        }
+
+        if (DOM.emiPaymentForm) {
+            DOM.emiPaymentForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const pool = DOM.epmPool.value;
+                const amount = parseFloat(DOM.epmAmount.value);
+                const modeInput = DOM.emiPaymentForm.querySelector('input[name="epm-mode"]:checked');
+                const mode = modeInput ? modeInput.value : 'cash';
+                const dateValStr = DOM.epmDate.value;
+
+                if (!pool) {
+                    this.showToast('Please select or create an EMI Record first.', 'error');
+                    return;
+                }
+                if (isNaN(amount) || amount <= 0) {
+                    this.showToast('Please enter a valid amount.', 'error');
+                    return;
+                }
+                if (!dateValStr) {
+                    this.showToast('Please select a valid date.', 'error');
+                    return;
+                }
+
+                try {
+                    const today = new Date();
+                    const dateVal = new Date(dateValStr + 'T00:00:00');
+                    if (dateVal.toDateString() === today.toDateString()) {
+                        dateVal.setHours(today.getHours(), today.getMinutes(), today.getSeconds(), today.getMilliseconds());
+                    } else {
+                        dateVal.setHours(23, 59, 59, 999);
+                    }
+
+                    const txData = {
+                        type: 'expense',
+                        desc: `EMI Payment: ${pool}`,
+                        amount: amount,
+                        mode: mode,
+                        timestamp: dateVal.toISOString()
+                    };
+
+                    await apiService.addTransaction(txData);
+                    this.showToast('EMI Payment saved successfully!', 'success');
+                    if (DOM.emiPaymentModal) DOM.emiPaymentModal.classList.remove('show');
+                    
+                    // Reload all data so dashboard counters, expenses, and targets update together
+                    await this.loadData();
+                } catch (err) {
+                    this.showToast('Failed to save EMI payment', 'error');
+                }
+            });
+        }
+
+        const btnCreateEMIRecord = document.getElementById('btn-create-emi-record');
+        if (btnCreateEMIRecord) {
+            btnCreateEMIRecord.addEventListener('click', () => {
+                if (DOM.emiRecordForm) DOM.emiRecordForm.reset();
+                const amtLabel = document.getElementById('erm-amount-label');
+                const durLabel = document.getElementById('erm-duration-label');
+                if (amtLabel) amtLabel.textContent = 'Monthly EMI Amount (₹) *';
+                if (durLabel) durLabel.textContent = 'Duration (Months) *';
+                if (DOM.emiRecordModal) DOM.emiRecordModal.classList.add('show');
+            });
+        }
+
+        const frequencyRadios = document.querySelectorAll('input[name="erm-frequency"]');
+        frequencyRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const freq = e.target.value;
+                const amtLabel = document.getElementById('erm-amount-label');
+                const durLabel = document.getElementById('erm-duration-label');
+                const amtInput = document.getElementById('erm-monthly-amount');
+                const durInput = document.getElementById('erm-duration');
+
+                if (freq === 'daily') {
+                    if (amtLabel) amtLabel.textContent = 'Daily EMI Amount (₹) *';
+                    if (durLabel) durLabel.textContent = 'Duration (Days) *';
+                    if (amtInput) amtInput.placeholder = 'e.g. 200';
+                    if (durInput) {
+                        durInput.placeholder = 'e.g. 100';
+                        durInput.value = '100';
+                    }
+                } else {
+                    if (amtLabel) amtLabel.textContent = 'Monthly EMI Amount (₹) *';
+                    if (durLabel) durLabel.textContent = 'Duration (Months) *';
+                    if (amtInput) amtInput.placeholder = 'e.g. 5000';
+                    if (durInput) {
+                        durInput.placeholder = 'e.g. 20';
+                        durInput.value = '20';
+                    }
+                }
+            });
+        });
+
+        if (DOM.emiRecordForm) {
+            DOM.emiRecordForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = DOM.ermName.value.trim();
+                const monthlyAmount = parseFloat(DOM.ermMonthlyAmount.value);
+                const duration = parseInt(DOM.ermDuration.value);
+                const totalAmount = parseFloat(DOM.ermTotalAmount.value);
+                const freqInput = DOM.emiRecordForm.querySelector('input[name="erm-frequency"]:checked');
+                const frequency = freqInput ? freqInput.value : 'monthly';
+
+                if (!name) {
+                    this.showToast('Please enter an EMI Record name.', 'error');
+                    return;
+                }
+                if (isNaN(monthlyAmount) || monthlyAmount <= 0) {
+                    this.showToast('Please enter a valid amount.', 'error');
+                    return;
+                }
+                if (isNaN(duration) || duration <= 0) {
+                    this.showToast('Please enter a valid duration.', 'error');
+                    return;
+                }
+                if (isNaN(totalAmount) || totalAmount <= 0) {
+                    this.showToast('Please enter a valid total loan/target amount.', 'error');
+                    return;
+                }
+
+                try {
+                    const emiData = {
+                        name: name,
+                        frequency: frequency,
+                        monthly_amount: monthlyAmount,
+                        duration_months: duration,
+                        total_amount: totalAmount
+                    };
+
+                    await apiService.saveEMI(emiData);
+                    this.showToast('EMI Record created successfully!', 'success');
+                    if (DOM.emiRecordModal) DOM.emiRecordModal.classList.remove('show');
+                    
+                    // Reload all data
+                    await this.loadData();
+                } catch (err) {
+                    this.showToast('Failed to create EMI Record', 'error');
+                }
+            });
+        }
+        // Delegated click handler on EMI List cards
+        if (DOM.emiRecentLogs) {
+            DOM.emiRecentLogs.addEventListener('click', (e) => {
+                const emiCard = e.target.closest('.emi-item-card');
+                if (emiCard) {
+                    const emiId = parseInt(emiCard.dataset.id);
+                    this.showEMIHistory(emiId);
+                }
+            });
+        }
+
+        // Delete EMI button click handler
+        const btnDeleteEmi = document.getElementById('btn-delete-emi');
+        if (btnDeleteEmi) {
+            btnDeleteEmi.addEventListener('click', async () => {
+                const emiId = btnDeleteEmi.dataset.id;
+                if (!emiId) return;
+
+                if (confirm("Are you sure you want to delete this EMI Record? This will delete the EMI plan, but all logged transaction payments will remain in your General Expenses history.")) {
+                    try {
+                        await apiService.deleteEMI(emiId);
+                        this.showToast('EMI Record deleted successfully!', 'success');
+                        if (DOM.emiHistoryModal) DOM.emiHistoryModal.classList.remove('show');
+                        await this.loadData();
+                    } catch (err) {
+                        this.showToast('Failed to delete EMI Record', 'error');
+                    }
+                }
+            });
+        }
+
+        // ── Bank Record Events ──────────────────────────────────────
+        const btnAddBankLog = document.getElementById('btn-add-bank-log');
+        if (btnAddBankLog) {
+            btnAddBankLog.addEventListener('click', () => {
+                // Reset form
+                const amtField = document.getElementById('bank-entry-amount');
+                const descField = document.getElementById('bank-entry-description');
+                const dateField = document.getElementById('bank-entry-date');
+                const typeRadios = document.querySelectorAll('input[name="bank-entry-type"]');
+                if (amtField) amtField.value = '';
+                if (descField) descField.value = '';
+                if (dateField) dateField.value = new Date().toISOString().split('T')[0];
+                typeRadios.forEach(r => { r.checked = r.value === 'deposit'; });
+                if (DOM.bankEntryModal) DOM.bankEntryModal.classList.add('show');
+            });
+        }
+
+        const btnCloseBankModal = document.getElementById('btn-close-bank-modal');
+        const btnCancelBankEntry = document.getElementById('btn-cancel-bank-entry');
+        [btnCloseBankModal, btnCancelBankEntry].forEach(btn => {
+            if (btn) btn.addEventListener('click', () => {
+                if (DOM.bankEntryModal) DOM.bankEntryModal.classList.remove('show');
+            });
+        });
+
+        const btnSaveBankEntry = document.getElementById('btn-save-bank-entry');
+        if (btnSaveBankEntry) {
+            btnSaveBankEntry.addEventListener('click', async () => {
+                const amtField = document.getElementById('bank-entry-amount');
+                const descField = document.getElementById('bank-entry-description');
+                const dateField = document.getElementById('bank-entry-date');
+                const typeRadio = document.querySelector('input[name="bank-entry-type"]:checked');
+
+                const rawAmount = parseFloat(amtField ? amtField.value : '');
+                const desc = descField ? descField.value.trim() : '';
+                const dateVal = dateField ? dateField.value : '';
+                const entryType = typeRadio ? typeRadio.value : 'deposit';
+
+                if (!rawAmount || rawAmount <= 0) {
+                    this.showToast('Please enter a valid amount', 'error'); return;
+                }
+                if (!desc) {
+                    this.showToast('Please enter a description', 'error'); return;
+                }
+
+                // Withdrawals are stored as negative amounts
+                const signedAmount = entryType === 'withdrawal' ? -Math.abs(rawAmount) : Math.abs(rawAmount);
+                const timestamp = dateVal ? `${dateVal}T12:00:00` : new Date().toISOString();
+
+                btnSaveBankEntry.disabled = true;
+                btnSaveBankEntry.textContent = 'Saving…';
+
+                try {
+                    const saved = await apiService.saveBankRecord({ description: desc, amount: signedAmount, timestamp });
+                    state.bankRecords.push(saved);
+                    this.showToast(`Bank entry saved! ${entryType === 'deposit' ? '💰' : '📤'}`, 'success');
+                    if (DOM.bankEntryModal) DOM.bankEntryModal.classList.remove('show');
+                    this.renderBankRecords();
+                } catch (err) {
+                    this.showToast('Failed to save bank entry', 'error');
+                } finally {
+                    btnSaveBankEntry.disabled = false;
+                    btnSaveBankEntry.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Entry';
+                }
+            });
+        }
+    },
+
+    async showEMIHistory(emiId) {
+        const emi = state.emis.find(e => e.id === emiId);
+        if (!emi) return;
+
+        // Populate EMI Info fields
+        const ehmTitle = document.getElementById('ehm-title');
+        const ehmFrequency = document.getElementById('ehm-frequency');
+        const ehmRate = document.getElementById('ehm-rate');
+        const ehmDuration = document.getElementById('ehm-duration');
+        const ehmTotal = document.getElementById('ehm-total');
+        const btnDeleteEmi = document.getElementById('btn-delete-emi');
+
+        if (ehmTitle) ehmTitle.textContent = `${emi.name} Details & History`;
+        if (ehmFrequency) ehmFrequency.textContent = emi.frequency === 'daily' ? 'Daily' : 'Monthly';
+        
+        const rateSuffix = emi.frequency === 'daily' ? 'day' : 'mo';
+        if (ehmRate) ehmRate.textContent = `₹${parseFloat(emi.monthly_amount).toLocaleString('en-IN')}/${rateSuffix}`;
+        
+        const durationSuffix = emi.frequency === 'daily' ? 'Days' : 'Months';
+        if (ehmDuration) ehmDuration.textContent = `${emi.duration_months} ${durationSuffix}`;
+        
+        if (ehmTotal) ehmTotal.textContent = `₹${parseFloat(emi.total_amount).toLocaleString('en-IN')}`;
+        if (btnDeleteEmi) btnDeleteEmi.dataset.id = emi.id;
+
+        // Show glassmorphic history modal first so loading spinner is visible
+        if (DOM.emiHistoryModal) DOM.emiHistoryModal.classList.add('show');
+
+        // Populate Payment History List with visual spinner loading indicator
+        const ehmHistoryList = document.getElementById('ehm-history-list');
+        if (ehmHistoryList) {
+            ehmHistoryList.innerHTML = `
+                <div style="text-align: center; padding: 25px; color: var(--text-muted);">
+                    <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; margin-bottom: 10px; display: block; color: var(--accent-blue);"></i>
+                    Syncing complete logs from server...
+                </div>
+            `;
+
+            try {
+                // Force a fresh, absolute fetch of all transactions to bypass local date filters completely
+                state.transactions = await apiService.getTransactions();
+            } catch (err) {
+                console.error('Failed to load fresh transactions for history modal:', err);
+            }
+
+            // Find all matching expense payments across all time in history
+            const matchingPayments = state.transactions.filter(t => {
+                const isExpense = t.type === 'expense';
+                const isThisEMI = t.desc && t.desc.toLowerCase().includes(`emi payment: ${emi.name.toLowerCase()}`);
+                return isExpense && isThisEMI;
+            });
+
+            // Sort payments by timestamp descending
+            matchingPayments.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            if (matchingPayments.length === 0) {
+                ehmHistoryList.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                        No payments logged for this EMI.
+                    </div>
+                `;
+            } else {
+                ehmHistoryList.innerHTML = matchingPayments.map(p => {
+                    const formattedDate = new Date(p.timestamp).toLocaleDateString('en-IN', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-weight: 500; color: var(--text-main);">${formattedDate}</span>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">${p.desc}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-weight: 600; color: var(--text-green);">₹${parseFloat(p.amount).toLocaleString('en-IN')}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
     },
 
     setDate() {
@@ -1201,6 +1806,7 @@ const app = {
         if (viewId === 'products') this.renderProducts();
         if (viewId === 'expenses') this.renderExpenses();
         if (viewId === 'notes') this.renderNotes();
+        if (viewId === 'owner-targets') this.renderOwnerTargets();
     },
 
     setupGlobalDateFilter() {
@@ -1879,7 +2485,11 @@ const app = {
                         typeHtml = '<span class="badge badge-online"><i class="fa-solid fa-mobile-screen"></i> Online In</span>';
                     }
                 } else {
-                    typeHtml = '<span class="badge badge-expense">Expense</span>';
+                    if (record.mode === 'online') {
+                        typeHtml = '<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;"><i class="fa-solid fa-mobile-screen"></i> Online Expense</span>';
+                    } else {
+                        typeHtml = '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;"><i class="fa-solid fa-money-bill"></i> Cash Expense</span>';
+                    }
                 }
 
                 const amountClass = record.type === 'income' ? 'text-green' : 'text-red';
@@ -2404,7 +3014,9 @@ const app = {
                     ? '<span class="badge badge-cash"><i class="fa-solid fa-money-bill"></i> Cash</span>'
                     : '<span class="badge badge-online"><i class="fa-solid fa-mobile-screen"></i> Online</span>';
             } else {
-                modeBadge = '<span class="badge badge-cash">Cash (from Reg)</span>';
+                modeBadge = t.mode === 'online'
+                    ? '<span class="badge badge-online"><i class="fa-solid fa-mobile-screen"></i> Online</span>'
+                    : '<span class="badge badge-cash"><i class="fa-solid fa-money-bill"></i> Cash</span>';
             }
 
             const amountClass = t.type === 'income' ? 'text-green' : 'text-red';
@@ -2446,7 +3058,7 @@ const app = {
                 if (DOM.tmQuickTags) DOM.tmQuickTags.style.display = 'flex';
             } else {
                 DOM.tmTitle.textContent = 'Add Expense';
-                DOM.tmPaymentModeGroup.style.display = 'none'; // Assume expenses are taken from cash
+                DOM.tmPaymentModeGroup.style.display = 'block'; // Show payment mode for worker expenses
                 if (DOM.tmQuickTags) DOM.tmQuickTags.style.display = 'none';
             }
         }
@@ -2576,11 +3188,8 @@ const app = {
         const desc = document.getElementById('tm-desc').value;
         const amount = parseFloat(document.getElementById('tm-amount').value);
         let mode = 'cash'; // Default
-
-        if (type === 'income' || workerId === null) {
-            const selectedRadio = document.querySelector('input[name="payment_mode"]:checked');
-            mode = selectedRadio ? selectedRadio.value : 'cash';
-        }
+        const selectedRadio = document.querySelector('input[name="payment_mode"]:checked');
+        mode = selectedRadio ? selectedRadio.value : 'cash';
 
         try {
             const newTx = await apiService.addTransaction({
@@ -3623,6 +4232,95 @@ const app = {
         }
     },
 
+    renderBankRecords() {
+        const monthSelect = DOM.bankMonthSelect;
+        const logsEl = DOM.bankRecentLogs;
+        const totalEl = DOM.bankTotalBalance;
+        const depositsEl = DOM.bankTotalDeposits;
+        const withdrawalsEl = DOM.bankTotalWithdrawals;
+
+        if (!monthSelect) return;
+
+        // Populate month selector with available months from records + current month
+        const now = new Date();
+        const allMonths = new Set();
+        // Always include current month
+        allMonths.add(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+        state.bankRecords.forEach(r => {
+            const d = new Date(r.timestamp);
+            allMonths.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        });
+
+        // Sort months descending
+        const sortedMonths = Array.from(allMonths).sort((a, b) => b.localeCompare(a));
+        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        // Preserve current selection or default to current month
+        const prevSelected = monthSelect.value || currentMonthKey;
+        monthSelect.innerHTML = sortedMonths.map(m => {
+            const [y, mo] = m.split('-');
+            const label = new Date(parseInt(y), parseInt(mo) - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+            return `<option value="${m}" ${m === prevSelected ? 'selected' : ''}>${label}</option>`;
+        }).join('');
+
+        // Wire change event (only once using a flag)
+        if (!monthSelect._bankListenerAdded) {
+            monthSelect.addEventListener('change', () => this.renderBankRecords());
+            monthSelect._bankListenerAdded = true;
+        }
+
+        // Filter records for selected month
+        const selected = monthSelect.value || currentMonthKey;
+        const [selYear, selMonth] = selected.split('-').map(Number);
+        const filtered = state.bankRecords.filter(r => {
+            const d = new Date(r.timestamp);
+            return d.getFullYear() === selYear && (d.getMonth() + 1) === selMonth;
+        });
+
+        // Sort descending by timestamp
+        filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        // Calculate totals
+        let deposits = 0, withdrawals = 0;
+        filtered.forEach(r => {
+            const amt = parseFloat(r.amount);
+            if (amt >= 0) deposits += amt; else withdrawals += Math.abs(amt);
+        });
+        const net = deposits - withdrawals;
+
+        // Update totals
+        if (totalEl) totalEl.textContent = `₹${net.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+        if (depositsEl) depositsEl.textContent = `₹${deposits.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+        if (withdrawalsEl) withdrawalsEl.textContent = `₹${withdrawals.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+
+        // Render log list
+        if (logsEl) {
+            if (filtered.length === 0) {
+                logsEl.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.82rem;">
+                        <i class="fa-solid fa-receipt" style="display: block; font-size: 1.4rem; margin-bottom: 6px; opacity: 0.4;"></i>
+                        No entries for this month. Click "Add Bank Entry" to start.
+                    </div>`;
+            } else {
+                logsEl.innerHTML = filtered.map(r => {
+                    const amt = parseFloat(r.amount);
+                    const isDeposit = amt >= 0;
+                    const color = isDeposit ? '#22c55e' : '#ef4444';
+                    const sign = isDeposit ? '+' : '-';
+                    const formattedDate = new Date(r.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.02); border-radius: 7px; border: 1px solid rgba(255,255,255,0.04);">
+                            <div style="display: flex; flex-direction: column; gap: 1px;">
+                                <span style="color: var(--text-main); font-size: 0.83rem; font-weight: 500;">${r.description}</span>
+                                <span style="color: var(--text-muted); font-size: 0.72rem;">${formattedDate}</span>
+                            </div>
+                            <span style="font-weight: 700; color: ${color}; font-size: 0.9rem; white-space: nowrap;">${sign} ₹${Math.abs(amt).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                        </div>`;
+                }).join('');
+            }
+        }
+    },
+
     renderNotes() {
         if (!DOM.notesGrid) return;
         DOM.notesGrid.innerHTML = '';
@@ -3734,6 +4432,250 @@ const app = {
             this.renderNotes();
         } catch (err) {
             this.showToast('Failed to save note', 'error');
+        }
+    },
+
+    renderOwnerTargets() {
+        console.log("Owner Targets view activated. Dynamic data hook ready.");
+        
+        // 1. Current Month & Year context
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+
+        // 2. Fetch Rent Target
+        const currentTargetObj = state.rentTargets.find(t => t.month === currentMonth && t.year === currentYear);
+        const targetVal = currentTargetObj ? parseFloat(currentTargetObj.target_amount) : 25000;
+
+        // 3. Gather payments from transactions (type='expense', containing 'shop rent payment')
+        const currentMonthPayments = state.transactions.filter(t => {
+            const isExpense = t.type === 'expense';
+            const isRent = t.desc && t.desc.toLowerCase().includes('shop rent payment');
+            if (!isExpense || !isRent) return false;
+            
+            const txDate = new Date(t.timestamp);
+            const matchLocal = (txDate.getMonth() + 1) === currentMonth && txDate.getFullYear() === currentYear;
+            const matchUTC = (txDate.getUTCMonth() + 1) === currentMonth && txDate.getUTCFullYear() === currentYear;
+            if (!matchLocal && !matchUTC) return false;
+
+            // If the target was reopened, only count/display payments after the reopen time
+            if (currentTargetObj && currentTargetObj.reopened_at) {
+                const reopenDate = new Date(currentTargetObj.reopened_at);
+                return txDate >= reopenDate;
+            }
+            return true;
+        });
+
+        const totalPaid = currentMonthPayments.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+        const pendingBalance = Math.max(0, targetVal - totalPaid);
+        const pctPaid = targetVal > 0 ? Math.min(100, Math.round((totalPaid / targetVal) * 100)) : 100;
+        const isReached = targetVal > 0 && totalPaid >= targetVal;
+
+        // 4. Update Shop Rent Target DOM elements
+        if (DOM.rentTargetVal) DOM.rentTargetVal.textContent = formatCurrency(targetVal);
+        if (DOM.rentPaidPct) DOM.rentPaidPct.textContent = `${pctPaid}%`;
+        if (DOM.rentPaidVal) DOM.rentPaidVal.textContent = formatCurrency(totalPaid);
+        if (DOM.rentPendingVal) DOM.rentPendingVal.textContent = formatCurrency(pendingBalance);
+
+        if (DOM.rentProgressBar) {
+            DOM.rentProgressBar.style.width = `${pctPaid}%`;
+            // Dynamic premium transition of colors: lower percentage is warmer, 100% is vibrant green
+            if (pctPaid < 30) {
+                DOM.rentProgressBar.style.background = 'linear-gradient(90deg, #e74c3c, #e67e22)';
+            } else if (pctPaid < 75) {
+                DOM.rentProgressBar.style.background = 'linear-gradient(90deg, #e67e22, #f1c40f)';
+            } else {
+                DOM.rentProgressBar.style.background = 'linear-gradient(90deg, #f39c12, #2ecc71)';
+            }
+        }
+
+        // Render Rent Status Badge
+        if (DOM.rentStatusContainer) {
+            DOM.rentStatusContainer.innerHTML = '';
+            if (isReached) {
+                DOM.rentStatusContainer.innerHTML = `
+                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: rgba(46, 204, 113, 0.15); border: 1px solid rgba(46, 204, 113, 0.3); border-radius: 20px; color: #2ecc71; font-size: 0.8rem; font-weight: 600; box-shadow: 0 0 10px rgba(46, 204, 113, 0.2); animation: pulse 2s infinite;">
+                        <i class="fa-solid fa-circle-check"></i> Done
+                    </span>
+                `;
+            }
+        }
+
+        // Render Actions
+        if (DOM.rentActionsContainer) {
+            DOM.rentActionsContainer.innerHTML = '';
+            if (isReached) {
+                DOM.rentActionsContainer.innerHTML = `
+                    <button class="btn btn-success btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; background: linear-gradient(135deg, #2ecc71, #27ae60); border: none; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.2);" id="btn-reopen-rent-target">
+                        <i class="fa-solid fa-rotate-left"></i> Reopen Target
+                    </button>
+                    <button class="btn btn-outline btn-sm" style="width: 100%; border-color: rgba(243,156,18,0.4); color: #f39c12; margin-top: 4px;" id="btn-add-rent-log">
+                        <i class="fa-solid fa-plus"></i> Add Extra Rent Payment
+                    </button>
+                `;
+
+                // Hook event listener for Reopen Rent Target
+                const btnReopen = document.getElementById('btn-reopen-rent-target');
+                if (btnReopen) {
+                    btnReopen.addEventListener('click', () => {
+                        if (DOM.rtTargetAmount) DOM.rtTargetAmount.value = '';
+                        if (DOM.rentTargetModal) {
+                            DOM.rentTargetModal.dataset.mode = 'reopen';
+                            const modalTitle = DOM.rentTargetModal.querySelector('h2');
+                            if (modalTitle) modalTitle.textContent = "Reopen Monthly Rent Target";
+                            DOM.rentTargetModal.classList.add('show');
+                        }
+                    });
+                }
+            } else {
+                DOM.rentActionsContainer.innerHTML = `
+                    <button class="btn btn-outline btn-sm" style="width: 100%; border-color: rgba(243,156,18,0.4); color: #f39c12;" id="btn-add-rent-log">
+                        <i class="fa-solid fa-plus"></i> Add Rent Payment
+                    </button>
+                `;
+            }
+
+            // Hook event listener for Add Rent Payment button
+            const btnAdd = document.getElementById('btn-add-rent-log');
+            if (btnAdd) {
+                btnAdd.addEventListener('click', () => {
+                    if (DOM.rentPaymentForm) DOM.rentPaymentForm.reset();
+                    if (DOM.rpDate) {
+                        const today = new Date();
+                        const year = today.getFullYear();
+                        const month = String(today.getMonth() + 1).padStart(2, '0');
+                        const day = String(today.getDate()).padStart(2, '0');
+                        DOM.rpDate.value = `${year}-${month}-${day}`;
+                    }
+                    if (DOM.rentPaymentModal) DOM.rentPaymentModal.classList.add('show');
+                });
+            }
+        }
+
+        // 5. Render Paid Logs list
+        if (DOM.rentRecentLogs) {
+            DOM.rentRecentLogs.innerHTML = '';
+            if (currentMonthPayments.length === 0) {
+                DOM.rentRecentLogs.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.8rem;">No rent payments logged for this month.</div>`;
+            } else {
+                // Sort newest payments first
+                const sortedPayments = [...currentMonthPayments].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                sortedPayments.forEach(p => {
+                    const logDiv = document.createElement('div');
+                    logDiv.style = "display: flex; justify-content: space-between; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.02); font-size: 0.85rem; align-items: center;";
+                    
+                    const txDate = new Date(p.timestamp);
+                    const formattedDate = txDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                    const paymentModeIcon = p.mode === 'online' 
+                        ? '<i class="fa-solid fa-credit-card" style="margin-left: 6px; font-size: 0.75rem; color: #3b82f6;" title="Online"></i>' 
+                        : '<i class="fa-solid fa-money-bill-1-wave" style="margin-left: 6px; font-size: 0.75rem; color: #10b981;" title="Cash"></i>';
+                    
+                    logDiv.innerHTML = `
+                        <span style="color: var(--text-main);">${formattedDate} Rent Paid ${paymentModeIcon}</span>
+                        <span style="font-weight: 600; color: var(--text-green);">+ ${formatCurrency(p.amount)}</span>
+                    `;
+                    DOM.rentRecentLogs.appendChild(logDiv);
+                });
+            }
+        }
+
+        // --- EMI Calculations & Rendering ---
+        // Find contributions of type 'expense' containing 'EMI Payment:' in description
+        const currentMonthEMIs = state.transactions.filter(t => {
+            const isExpense = t.type === 'expense';
+            const isEMI = t.desc && t.desc.toLowerCase().includes('emi payment:');
+            if (!isExpense || !isEMI) return false;
+            
+            const txDate = new Date(t.timestamp);
+            const matchLocal = (txDate.getMonth() + 1) === currentMonth && txDate.getFullYear() === currentYear;
+            const matchUTC = (txDate.getUTCMonth() + 1) === currentMonth && txDate.getUTCFullYear() === currentYear;
+            return matchLocal || matchUTC;
+        });
+
+        // Calculate total contributed for the current selected month context
+        const currentMonthEMITotal = currentMonthEMIs.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
+        // Gather ALL transactions in history for overall metrics
+        const allEMITx = state.transactions.filter(t => {
+            const isExpense = t.type === 'expense';
+            const isEMI = t.desc && t.desc.toLowerCase().includes('emi payment:');
+            return isExpense && isEMI;
+        });
+
+        // Calculate expected payout / total target amount across all active EMIs
+        const totalExpectedPayout = state.emis.reduce((sum, e) => sum + parseFloat(e.total_amount || 0), 0);
+
+        // Update the top metrics on EMI card
+        if (DOM.emiActiveCount) DOM.emiActiveCount.textContent = `${state.emis.length} Active`;
+        // Show total contributed DEPENDING ON DATE (i.e. for the selected/current month)
+        if (DOM.emiTotalContributed) DOM.emiTotalContributed.textContent = formatCurrency(currentMonthEMITotal);
+        if (DOM.emiExpectedPayout) DOM.emiExpectedPayout.textContent = formatCurrency(totalExpectedPayout);
+
+        // Dynamically build emi-recent-logs list showing status for the current month
+        if (DOM.emiRecentLogs) {
+            if (state.emis.length === 0) {
+                DOM.emiRecentLogs.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted); background: rgba(0,0,0,0.1); border-radius: 6px;">
+                        <i class="fa-solid fa-folder-open" style="font-size: 1.5rem; margin-bottom: 8px; display: block; opacity: 0.5;"></i>
+                        No active EMI records. Click "Create EMI" to add one!
+                    </div>
+                `;
+            } else {
+                DOM.emiRecentLogs.innerHTML = state.emis.map(e => {
+                    const isDaily = e.frequency === 'daily';
+                    
+                    // Overall history payments count (count all contributions across all time for this EMI record)
+                    const totalPaidAcrossTime = allEMITx.filter(t => t.desc.toLowerCase().includes(`emi payment: ${e.name.toLowerCase()}`));
+                    const totalCountPaid = totalPaidAcrossTime.length;
+
+                    let hasPaid = false;
+                    let paidAmountCurrent = 0;
+                    let displayLabel = '';
+                    let statusLabel = '';
+                    let suffix = '';
+
+                    if (isDaily) {
+                        suffix = 'day';
+                        const todayStr = new Date().toDateString();
+                        const paidToday = state.transactions.filter(t => {
+                            const isExpense = t.type === 'expense';
+                            const isThisEMI = t.desc && t.desc.toLowerCase().includes(`emi payment: ${e.name.toLowerCase()}`);
+                            if (!isExpense || !isThisEMI) return false;
+                            return new Date(t.timestamp).toDateString() === todayStr;
+                        });
+                        hasPaid = paidToday.length > 0;
+                        paidAmountCurrent = paidToday.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+                        displayLabel = `Paid: ${totalCountPaid} / ${e.duration_months} Days`;
+                        statusLabel = hasPaid ? `₹${paidAmountCurrent.toLocaleString('en-IN')} paid today` : `Pending for today`;
+                    } else {
+                        suffix = 'mo';
+                        const paidThisMonth = currentMonthEMIs.filter(t => t.desc.toLowerCase().includes(`emi payment: ${e.name.toLowerCase()}`));
+                        hasPaid = paidThisMonth.length > 0;
+                        paidAmountCurrent = paidThisMonth.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+                        displayLabel = `Paid: ${totalCountPaid} / ${e.duration_months} Months`;
+                        statusLabel = hasPaid ? `₹${paidAmountCurrent.toLocaleString('en-IN')} paid this month` : `Pending for this month`;
+                    }
+
+                    const borderHighlight = hasPaid ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255,255,255,0.02)';
+
+                    return `
+                        <div class="emi-item-card" data-id="${e.id}" style="cursor: pointer; display: flex; flex-direction: column; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid ${borderHighlight}; transition: all 0.2s;">
+                            <div style="display: flex; justify-content: space-between; font-weight: 500; align-items: center;">
+                                <span style="color: var(--text-main); font-weight: 600;">${e.name} <small style="font-weight: normal; color: var(--text-muted); font-size: 0.75rem;">(${e.frequency === 'daily' ? 'Daily' : 'Monthly'})</small></span>
+                                <span style="font-weight: 600; color: ${hasPaid ? 'var(--text-green)' : 'var(--text-blue)'};">
+                                    ${hasPaid ? `<i class="fa-solid fa-circle-check" style="margin-right: 4px;"></i> Paid` : `₹${parseFloat(e.monthly_amount).toLocaleString('en-IN')}/${suffix}`}
+                                </span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
+                                <span>${displayLabel}</span>
+                                <span style="font-weight: 500;">
+                                    ${statusLabel}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
     }
 };

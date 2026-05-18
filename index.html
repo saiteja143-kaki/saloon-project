@@ -56,6 +56,9 @@
                 <a href="#" class="nav-link" data-target="notes">
                     <i class="fa-solid fa-note-sticky"></i> Notes
                 </a>
+                <a href="#" class="nav-link" data-target="owner-targets">
+                    <i class="fa-solid fa-bullseye"></i> Owner Targets
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -341,6 +344,187 @@
 
                 <div class="workers-grid" id="notes-grid">
                     <!-- Cards Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Owner Targets View -->
+            <section id="view-owner-targets" class="view-section">
+                <div class="workers-header-actions" style="margin-bottom: 24px;">
+                    <div style="flex: 1;">
+                        <h2 style="margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
+                            <i class="fa-solid fa-bullseye" style="color: var(--primary);"></i> Owner Targets & Records
+                        </h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Track key financial milestones, kitty pool funds, and banking records.</p>
+                    </div>
+                </div>
+
+                <!-- 3 Column Grid -->
+                <div class="owner-targets-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 24px;">
+                    
+                    <!-- 1. Shop Rent Target Card -->
+                    <div class="worker-card" style="cursor: default;">
+                        <div class="worker-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <div class="avatar" style="background: rgba(243, 156, 18, 0.15); color: #f39c12; border: 1px solid rgba(243,156,18,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; box-shadow: none;">
+                                    <i class="fa-solid fa-house-user"></i>
+                                </div>
+                                <div class="info">
+                                    <h3 style="margin: 0; font-size: 1.2rem;">Shop Rent Target</h3>
+                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Monthly Rental Status</p>
+                                </div>
+                            </div>
+                            <!-- Rent Status Container -->
+                            <div id="rent-status-container"></div>
+                        </div>
+
+                        <!-- Rent Body Content -->
+                        <div style="padding: 16px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Monthly Rent Target</span>
+                                <span style="font-weight: 600; color: var(--text-main); font-size: 1.1rem; display: flex; align-items: center; gap: 6px;">
+                                    <span id="rent-target-val">₹25,000</span>
+                                    <i class="fa-solid fa-pen-to-square hover-primary" id="btn-edit-rent-target" style="font-size: 0.9rem; color: var(--text-muted); cursor: pointer; transition: color 0.2s;" title="Change Monthly Target"></i>
+                                </span>
+                            </div>
+                            
+                            <!-- Rent Progress Bar -->
+                            <div style="margin-bottom: 16px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.8rem;">
+                                    <span style="color: var(--text-muted);">Rent Collected / Paid</span>
+                                    <span style="color: var(--text-green); font-weight: 600;" id="rent-paid-pct">60%</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                                    <div style="width: 60%; height: 100%; background: linear-gradient(90deg, #f39c12, #2ecc71); border-radius: 4px;" id="rent-progress-bar"></div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Total Paid</span>
+                                <span style="font-weight: 500; color: var(--text-green);" id="rent-paid-val">₹15,000</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Pending Balance</span>
+                                <span style="font-weight: 500; color: var(--text-red);" id="rent-pending-val">₹10,000</span>
+                            </div>
+                        </div>
+
+                        <!-- Mini history -->
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Recent Paid Logs</h4>
+                            <div id="rent-recent-logs" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; max-height: 120px; overflow-y: auto;">
+                                <div style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.02);">
+                                    <span style="color: var(--text-main);">May 2026 Rent Payment</span>
+                                    <span style="font-weight: 600; color: var(--text-green);">+ ₹15,000</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.02);">
+                                    <span style="color: var(--text-muted);">April 2026 Full Rent</span>
+                                    <span style="font-weight: 600; color: var(--text-green);">+ ₹25,000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions container -->
+                        <div id="rent-actions-container" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                            <button class="btn btn-outline btn-sm" style="width: 100%; border-color: rgba(243,156,18,0.4); color: #f39c12;" id="btn-add-rent-log">
+                                <i class="fa-solid fa-plus"></i> Add Rent Payment
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 2. EMI Records Card -->
+                    <div class="worker-card" style="cursor: default;">
+                        <div class="worker-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <div class="avatar" style="background: rgba(139, 92, 246, 0.15); color: var(--primary); border: 1px solid rgba(139,92,246,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; box-shadow: none;">
+                                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                                </div>
+                                <div class="info">
+                                    <h3 style="margin: 0; font-size: 1.2rem;">EMI Records</h3>
+                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Manage active loans & installments</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- EMI Content -->
+                        <div style="padding: 16px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Active EMI Records</span>
+                                <span style="font-weight: 500; color: var(--text-main);" id="emi-active-count">0 Active</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Total Contributed</span>
+                                <span style="font-weight: 500; color: var(--text-blue);" id="emi-total-contributed">₹0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Expected Payout</span>
+                                <span style="font-weight: 600; color: var(--text-green);" id="emi-expected-payout">₹0</span>
+                            </div>
+                        </div>
+
+                        <!-- EMI Mini Listing -->
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Active EMIs</h4>
+                            <div id="emi-recent-logs" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; max-height: 120px; overflow-y: auto;">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; width: 100%;">
+                            <button class="btn btn-outline btn-sm" style="flex: 1; border-color: rgba(139,92,246,0.4); color: var(--primary);" id="btn-add-emi-payment">
+                                <i class="fa-solid fa-plus"></i> Add Payment
+                            </button>
+                            <button class="btn btn-outline btn-sm" style="flex: 1; border-color: rgba(59,130,246,0.4); color: #3b82f6;" id="btn-create-emi-record">
+                                <i class="fa-solid fa-folder-plus"></i> Create EMI
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Bank Amount Record Card -->
+                    <div class="worker-card" style="cursor: default;">
+                        <div class="worker-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <div class="avatar" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; box-shadow: none;">
+                                    <i class="fa-solid fa-building-columns"></i>
+                                </div>
+                                <div class="info">
+                                    <h3 style="margin: 0; font-size: 1.2rem;">Bank Amount Record</h3>
+                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Manual bank ledger</p>
+                                </div>
+                            </div>
+                            <!-- Month Selector -->
+                            <select id="bank-month-select" style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; border-radius: 8px; padding: 5px 10px; font-size: 0.8rem; cursor: pointer; outline: none; font-family: inherit;">
+                            </select>
+                        </div>
+
+                        <!-- Bank Content -->
+                        <div style="padding: 16px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Total Bank Balance</span>
+                                <span style="font-weight: 600; color: #3b82f6; font-size: 1.1rem;" id="bank-total-balance">₹0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Total Deposits</span>
+                                <span style="font-weight: 500; color: #22c55e;" id="bank-total-deposits">₹0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Total Withdrawals</span>
+                                <span style="font-weight: 500; color: #ef4444;" id="bank-total-withdrawals">₹0</span>
+                            </div>
+                        </div>
+
+                        <!-- Bank Mini Log -->
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Recent Bank Transfers</h4>
+                            <div id="bank-recent-logs" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; max-height: 120px; overflow-y: auto;">
+                                <!-- Dynamic logs rendered here -->
+                            </div>
+                        </div>
+
+                        <button class="btn btn-outline btn-sm" style="width: 100%; border-color: rgba(59,130,246,0.4); color: #3b82f6;" id="btn-add-bank-log">
+                            <i class="fa-solid fa-plus"></i> Add Bank Entry
+                        </button>
+                    </div>
+
                 </div>
             </section>
 
@@ -874,6 +1058,66 @@
             </form>
         </div>
     </div>
+
+    <!-- Set Rent Target Modal -->
+    <div class="modal" id="rent-target-modal">
+        <div class="modal-content mini-modal">
+            <span class="close-modal">&times;</span>
+            <h2>Set Monthly Rent Target</h2>
+            <form id="rent-target-form" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label for="rt-target-amount">Monthly Target Amount (₹) *</label>
+                    <input type="number" id="rt-target-amount" required placeholder="e.g. 25000" min="0">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Target</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Rent Payment Modal -->
+    <div class="modal" id="rent-payment-modal">
+        <div class="modal-content mini-modal">
+            <span class="close-modal">&times;</span>
+            <h2>Add Rent Payment</h2>
+            <form id="rent-payment-form" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label for="rp-amount">Amount Paid (₹) *</label>
+                    <input type="number" id="rp-amount" required placeholder="e.g. 15000" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label>Payment Mode *</label>
+                    <div class="radio-group">
+                        <label class="radio-card">
+                            <input type="radio" name="rp-mode" value="cash" checked required>
+                            <div class="radio-content">
+                                <i class="fa-solid fa-money-bill-1-wave"></i> Cash
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="rp-mode" value="online" required>
+                            <div class="radio-content">
+                                <i class="fa-solid fa-credit-card"></i> Online
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="rp-date">Payment Date *</label>
+                    <input type="date" id="rp-date" required>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
         </div>
     </div>
 
@@ -1109,6 +1353,196 @@
                         <button type="submit" class="btn btn-success" style="flex: 1;">Confirm Settlement</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add EMI Payment Modal -->
+    <div class="modal" id="emi-payment-modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Add EMI Payment</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="emi-payment-form">
+                    <div class="form-group">
+                        <label for="epm-pool">Select EMI Record *</label>
+                        <select id="epm-pool" required style="width: 100%; padding: 10px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-glass); border-radius: 6px; color: var(--text-primary);">
+                            <!-- Populated dynamically from backend EMIs -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="epm-amount">Payment Amount (₹) *</label>
+                        <input type="number" id="epm-amount" required min="1" step="0.01">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="epm-date">Payment Date *</label>
+                        <input type="date" id="epm-date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Payment Method *</label>
+                        <div style="display: flex; gap: 16px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="radio" name="epm-mode" value="cash" checked style="width: auto;">
+                                <span style="color: var(--text-primary);"><i class="fa-solid fa-money-bill-wave" style="color: var(--text-green); margin-right: 4px;"></i> Cash</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="radio" name="epm-mode" value="online" style="width: auto;">
+                                <span style="color: var(--text-primary);"><i class="fa-solid fa-qrcode" style="color: var(--primary); margin-right: 4px;"></i> Online/UPI</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="button" class="btn btn-outline close-modal-btn" style="flex: 1;">Cancel</button>
+                        <button type="submit" class="btn btn-primary" style="flex: 1; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border: none;">Save Payment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create EMI Record Modal -->
+    <div class="modal" id="emi-record-modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Create EMI Record</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="emi-record-form">
+                    <div class="form-group">
+                        <label for="erm-name">EMI Record Name *</label>
+                        <input type="text" id="erm-name" required placeholder="e.g. Gold Loan, Shop Security Loan">
+                    </div>
+
+                    <div class="form-group">
+                        <label>EMI Frequency *</label>
+                        <div style="display: flex; gap: 16px; margin-top: 8px; margin-bottom: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="radio" name="erm-frequency" value="monthly" checked style="width: auto;">
+                                <span style="color: var(--text-primary);"><i class="fa-solid fa-calendar-days" style="color: var(--primary); margin-right: 4px;"></i> Monthly</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="radio" name="erm-frequency" value="daily" style="width: auto;">
+                                <span style="color: var(--text-primary);"><i class="fa-solid fa-calendar-day" style="color: var(--text-green); margin-right: 4px;"></i> Daily</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="erm-monthly-amount" id="erm-amount-label">Monthly EMI Amount (₹) *</label>
+                        <input type="number" id="erm-monthly-amount" required min="1" step="0.01" placeholder="e.g. 5000">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="erm-duration" id="erm-duration-label">Duration (Months) *</label>
+                        <input type="number" id="erm-duration" required min="1" step="1" value="20" placeholder="e.g. 20">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="erm-total-amount">Total Loan / Target Amount (₹) *</label>
+                        <input type="number" id="erm-total-amount" required min="1" step="0.01" placeholder="e.g. 100000">
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="button" class="btn btn-outline close-modal-btn" style="flex: 1;">Cancel</button>
+                        <button type="submit" class="btn btn-primary" style="flex: 1; background: #3b82f6; border: none;">Create Record</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Bank Entry Modal -->
+    <div class="modal" id="bank-entry-modal">
+        <div class="modal-content" style="max-width: 460px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-building-columns" style="color: #3b82f6; margin-right: 8px;"></i>Add Bank Entry</h2>
+                <button class="close-modal" id="btn-close-bank-modal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;">Entry Type</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid rgba(34,197,94,0.3); border-radius: 8px; cursor: pointer; background: rgba(34,197,94,0.05);">
+                            <input type="radio" name="bank-entry-type" value="deposit" checked style="accent-color: #22c55e;">
+                            <span style="font-size: 0.9rem; color: #22c55e; font-weight: 500;">💰 Deposit</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; cursor: pointer; background: rgba(239,68,68,0.05);">
+                            <input type="radio" name="bank-entry-type" value="withdrawal" style="accent-color: #ef4444;">
+                            <span style="font-size: 0.9rem; color: #ef4444; font-weight: 500;">📤 Withdrawal</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;">Amount (₹) *</label>
+                    <input type="number" id="bank-entry-amount" placeholder="Enter amount" min="1" step="0.01"
+                        style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px 14px; color: var(--text-main); font-size: 1rem; outline: none; box-sizing: border-box;" />
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;">Description *</label>
+                    <input type="text" id="bank-entry-description" placeholder="e.g. Shop UPI Deposit, Vendor Payout"
+                        style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px 14px; color: var(--text-main); font-size: 0.9rem; outline: none; box-sizing: border-box;" />
+                </div>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;">Date</label>
+                    <input type="date" id="bank-entry-date"
+                        style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px 14px; color: var(--text-main); font-size: 0.9rem; outline: none; box-sizing: border-box; cursor: pointer;" />
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <button class="btn btn-outline close-modal-btn" id="btn-cancel-bank-entry" style="border-color: rgba(255,255,255,0.2); color: var(--text-muted);">Cancel</button>
+                    <button class="btn btn-primary" id="btn-save-bank-entry" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none; font-weight: 600;">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Entry
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EMI Details & History Modal -->
+    <div class="modal" id="emi-history-modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 15px;">
+                <h2 id="ehm-title">EMI Details & History</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body" style="padding-top: 15px;">
+                <!-- EMI Info Card -->
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div>
+                        <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">Frequency</span>
+                        <span style="font-weight: 600;" id="ehm-frequency">Monthly</span>
+                    </div>
+                    <div>
+                        <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">Installment Amount</span>
+                        <span style="font-weight: 600;" id="ehm-rate">₹5,000</span>
+                    </div>
+                    <div>
+                        <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">Duration</span>
+                        <span style="font-weight: 600;" id="ehm-duration">20 Months</span>
+                    </div>
+                    <div>
+                        <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">Total Loan / Target</span>
+                        <span style="font-weight: 600; color: var(--text-green);" id="ehm-total">₹1,00,000</span>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 8px;">Payment History (All Time)</h3>
+                <div style="max-height: 250px; overflow-y: auto; margin-top: 10px; border: 1px solid rgba(255,255,255,0.05); border-radius: 6px;" id="ehm-history-list">
+                    <!-- Dynamic payment rows go here -->
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px;">
+                    <button type="button" class="btn btn-outline" style="flex: 1; border-color: rgba(239, 68, 68, 0.4); color: #ef4444;" id="btn-delete-emi">
+                        <i class="fa-solid fa-trash-can"></i> Delete EMI Record
+                    </button>
+                    <button type="button" class="btn btn-outline close-modal-btn" style="flex: 1;">Close</button>
+                </div>
             </div>
         </div>
     </div>

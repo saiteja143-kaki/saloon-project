@@ -123,3 +123,38 @@ class Note(models.Model):
 
     def __str__(self):
         return f"Note: {self.name} - {self.timestamp}"
+
+
+class RentTarget(models.Model):
+    month = models.IntegerField()  # 1 to 12
+    year = models.IntegerField()   # e.g., 2026
+    target_amount = models.DecimalField(max_digits=10, decimal_places=2, default=25000.00)
+    reopened_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('month', 'year')
+
+    def __str__(self):
+        return f"Rent Target for {self.month}/{self.year}: {self.target_amount}"
+
+
+class EMI(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    frequency = models.CharField(max_length=20, choices=[('daily', 'Daily'), ('monthly', 'Monthly')], default='monthly')
+    monthly_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    duration_months = models.IntegerField(default=20)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"EMI: {self.name} ({self.frequency}) - {self.monthly_amount}"
+
+
+class BankRecord(models.Model):
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)  # positive for deposit, negative for withdraw
+    timestamp = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"BankRecord: {self.description} ({self.amount}) on {self.timestamp}"
+

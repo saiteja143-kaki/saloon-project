@@ -233,9 +233,25 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
         return super().destroy(request, *args, **kwargs)
 
-from .models import Note
-from .serializers import NoteSerializer
+from .models import Note, RentTarget, EMI, BankRecord
+from .serializers import NoteSerializer, RentTargetSerializer, EMISerializer, BankRecordSerializer
 
 class NoteViewSet(viewsets.ModelViewSet):
     queryset = Note.objects.all().order_by('-timestamp')
     serializer_class = NoteSerializer
+
+
+class RentTargetViewSet(viewsets.ModelViewSet):
+    queryset = RentTarget.objects.all().order_by('year', 'month')
+    serializer_class = RentTargetSerializer
+
+
+class EMIViewSet(viewsets.ModelViewSet):
+    queryset = EMI.objects.all().order_by('-created_at')
+    serializer_class = EMISerializer
+
+
+class BankRecordViewSet(viewsets.ModelViewSet):
+    queryset = BankRecord.objects.all().order_by('-timestamp')
+    serializer_class = BankRecordSerializer
+
