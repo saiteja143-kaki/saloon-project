@@ -9,7 +9,7 @@
     const _originalFetch = window.fetch;
     window.fetch = function (url, options = {}) {
         const token = localStorage.getItem('auth_token');
-        if (token && typeof url === 'string' && url.includes('localhost:8000')) {
+        if (token && typeof url === 'string' && url.includes('/api/')) {
             options.headers = options.headers || {};
             options.headers['Authorization'] = `Token ${token}`;
             if (!options.headers['Content-Type'] && !(options.body instanceof FormData)) {
@@ -17,7 +17,7 @@
             }
         }
         return _originalFetch(url, options).then(res => {
-            if (res.status === 401 && typeof url === 'string' && url.includes('localhost:8000')) {
+            if (res.status === 401 && typeof url === 'string' && url.includes('/api/')) {
                 localStorage.removeItem('auth_token');
                 window.location.href = 'login.html';
             }
