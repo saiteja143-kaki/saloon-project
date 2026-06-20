@@ -1043,6 +1043,16 @@ const app = {
             });
         }
 
+        // Auto-pad Member ID to 3 digits on input blur if numeric
+        if (DOM.msMemberId) {
+            DOM.msMemberId.addEventListener('blur', (e) => {
+                let val = e.target.value.trim();
+                if (val && /^\d+$/.test(val)) {
+                    e.target.value = val.padStart(3, '0');
+                }
+            });
+        }
+
         // Form Submit (Record for Membership)
         if (DOM.recordForm) {
             DOM.recordForm.addEventListener('submit', (e) => {
@@ -2402,6 +2412,8 @@ const app = {
     openMetricHistory(metricType) {
         if (!DOM.metricHistoryModal || !DOM.mhmRecordsBody) return;
 
+        this.currentMetricType = metricType;
+
         // Setup title
         let title = '';
         if (metricType === 'total_revenue') title = 'Total Revenue History';
@@ -2504,7 +2516,7 @@ const app = {
                     <td>${typeHtml}</td>
                     <td class="${amountClass} font-bold" style="text-align: right;">${sign}${formatCurrency(record.amount)}</td>
                     <td style="text-align: right;">
-                        <button class="btn btn-sm btn-outline text-red" onclick="app.deleteRecord('${record.recordType}', ${record.id})" title="Delete Record">
+                        <button class="btn btn-sm btn-outline text-red" onclick="app.deleteRecord('${record.recordType}', '${record.id}')" title="Delete Record">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </td>
@@ -2772,13 +2784,41 @@ const app = {
         if (!DOM.membershipsGrid) return;
         DOM.membershipsGrid.innerHTML = '';
 
-        const searchTerm = DOM.membershipSearch ? DOM.membershipSearch.value.toLowerCase() : '';
+        const searchTerm = DOM.membershipSearch ? DOM.membershipSearch.value.trim().toLowerCase() : '';
         const filteredMemberships = state.memberships.filter(member => {
-            const matchesName = member.name.toLowerCase().includes(searchTerm);
-            const matchesId = (member.member_id || String(member.id)).toLowerCase().includes(searchTerm);
-            const matchesPhone = member.phone_number.includes(searchTerm);
-            const matchesVillage = member.village_name.toLowerCase().includes(searchTerm);
-            return matchesName || matchesId || matchesPhone || matchesVillage;
+            if (!searchTerm) return true;
+
+            const name = member.name.toLowerCase();
+            const phone = member.phone_number || '';
+            const village = member.village_name.toLowerCase();
+            const rawId = String(member.member_id || member.id).trim();
+            const paddedId = /^\d+$/.test(rawId) ? rawId.padStart(3, '0') : rawId;
+
+            // Check if search term is numeric
+            const isNumericSearch = /^\d+$/.test(searchTerm);
+
+            if (isNumericSearch) {
+                // If it's a short numeric search (up to 4 digits), search primarily by card ID (raw or padded)
+                if (searchTerm.length <= 4) {
+                    return rawId.includes(searchTerm) || paddedId.includes(searchTerm);
+                } else {
+                    // Longer numeric search: could be phone number or a long card ID
+                    return rawId.includes(searchTerm) || paddedId.includes(searchTerm) || phone.includes(searchTerm);
+                }
+            }
+
+            // Non-numeric search: name, village, and ID if it matches
+            return name.includes(searchTerm) ||
+                   village.includes(searchTerm) ||
+                   rawId.includes(searchTerm) ||
+                   paddedId.includes(searchTerm);
+        });
+
+        // Sort memberships numerically by member_id
+        filteredMemberships.sort((a, b) => {
+            const idA = parseInt(a.member_id) || a.id;
+            const idB = parseInt(b.member_id) || b.id;
+            return idA - idB;
         });
 
         if (filteredMemberships.length === 0) {
@@ -2794,6 +2834,10 @@ const app = {
             const card = document.createElement('div');
             card.className = 'worker-card';
             card.style.cursor = 'pointer';
+            
+            const rawId = String(member.member_id || member.id).trim();
+            const displayId = /^\d+$/.test(rawId) ? rawId.padStart(3, '0') : rawId;
+            
             card.innerHTML = `
                 <div class="worker-card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div style="display: flex; gap: 12px; align-items: center;">
@@ -2801,7 +2845,7 @@ const app = {
                             <i class="fa-solid fa-id-card"></i>
                         </div>
                         <div class="info">
-                            <h3 style="margin-bottom: 4px;">${member.member_id || member.id} <span style="font-size: 0.9rem; font-weight: normal; margin-left: 8px;">(${member.name})</span></h3>
+                            <h3 style="margin-bottom: 4px;">${displayId} <span style="font-size: 0.9rem; font-weight: normal; margin-left: 8px;">(${member.name})</span></h3>
                             <p style="font-size: 0.85rem;"><i class="fa-solid fa-phone" style="margin-right: 4px;"></i> ${member.phone_number}</p>
                         </div>
                     </div>
@@ -3127,21 +3171,21 @@ const app = {
         try {
             if (type === 'transaction') {
                 await apiService.deleteTransaction(id);
-                state.transactions = state.transactions.filter(t => t.id !== id);
+                state.transactions = state.transactions.filter(t => t.id != id);
             } else if (type === 'membership_record') {
                 await apiService.deleteMembershipRecord(id);
                 // Also remove associated transaction if it exists in state
-                const txId = state.transactions.find(t => t.membership_record_id === id)?.id;
-                if (txId) state.transactions = state.transactions.filter(t => t.id !== txId);
+                const txId = state.transactions.find(t => t.membership_record_id == id)?.id;
+                if (txId) state.transactions = state.transactions.filter(t => t.id != txId);
             } else if (type === 'appointment') {
                 await apiService.deleteAppointment(id);
-                state.appointments = state.appointments.filter(a => a.id !== id);
+                state.appointments = state.appointments.filter(a => a.id != id);
                 // Also remove associated transaction if it exists in state
-                const txId = state.transactions.find(t => t.appointment_id === id)?.id;
-                if (txId) state.transactions = state.transactions.filter(t => t.id !== txId);
+                const txId = state.transactions.find(t => t.appointment_id == id)?.id;
+                if (txId) state.transactions = state.transactions.filter(t => t.id != txId);
             } else if (type === 'product_sale') {
                 await apiService.deleteProductSale(id);
-                state.productSales = state.productSales.filter(s => s.id !== id);
+                state.productSales = state.productSales.filter(s => s.id != id);
                 // Also update products state (stock will be updated on backend, but we should sync or refetch)
                 const products = await apiService.getProducts();
                 state.products = products;
@@ -3168,10 +3212,9 @@ const app = {
                 this.openMembershipDetailModal(memberId);
             }
             if (DOM.metricHistoryModal.classList.contains('show')) {
-                // Re-open metric history to refresh (hacky but works)
-                // We'd need to know the current metricType though. 
-                // Let's assume the user can just close and re-open or we keep track of it.
-                // For now, refreshAllViews handles the background.
+                if (this.currentMetricType) {
+                    this.openMetricHistory(this.currentMetricType);
+                }
             }
 
         } catch (e) {
@@ -3315,7 +3358,10 @@ const app = {
     },
 
     async handleMembershipSubmit() {
-        const memberId = DOM.msMemberId.value.trim();
+        let memberId = DOM.msMemberId.value.trim();
+        if (/^\d+$/.test(memberId)) {
+            memberId = memberId.padStart(3, '0');
+        }
         const name = DOM.msName.value.trim();
         const phone = DOM.msPhone.value.trim();
         const village = DOM.msVillage.value.trim();

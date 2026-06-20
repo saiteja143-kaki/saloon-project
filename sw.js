@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hr-infinity-v10';
+const CACHE_NAME = 'hr-infinity-v11';
 const ASSETS = [
     '/',
     '/index.html',
